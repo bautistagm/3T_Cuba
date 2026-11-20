@@ -17,44 +17,21 @@ import {
 } from "./admins/admins.js";
 import { registrarAuditoria } from "./auditoria/auditoria.js";
 import { obtenerHashDeRelleno, verificarContrasena } from "./auth/contrasenas.js";
-import { buscarSesion, crearSesion, revocarSesion, type AdminEnSesion } from "./auth/sesiones.js";
+import { buscarSesion, crearSesion, revocarSesion } from "./auth/sesiones.js";
 import { ErrorCaja } from "./caja/libro.js";
 import type { Config } from "./config.js";
 import type { BaseDeDatos } from "./db/cliente.js";
 import { admins } from "./db/esquema.js";
+import { ErrorNegocio } from "./errores.js";
+import { ErrorHttp, requiereDueno, requiereSesion } from "./rutas/comun.js";
+import { rutasSabados } from "./rutas/sabados.js";
+
+export { ErrorHttp, requiereDueno, requiereSesion };
 
 export const COOKIE_SESION = "sesion_3t";
 
-declare module "fastify" {
-  interface FastifyRequest {
-    admin: AdminEnSesion | null;
-  }
-}
-
-/** Error con un mensaje pensado para mostrarle a la persona. */
-export class ErrorHttp extends Error {
-  constructor(
-    readonly estado: number,
-    readonly codigo: string,
-    mensaje: string,
-  ) {
-    super(mensaje);
-  }
-}
-
 function responderError(respuesta: FastifyReply, estado: number, codigo: string, mensaje: string) {
   return respuesta.status(estado).send({ error: { codigo, mensaje } });
-}
-
-export function requiereSesion(peticion: FastifyRequest): AdminEnSesion {
-  if (!peticion.admin) throw new ErrorHttp(401, "SIN_SESION", "Tenés que iniciar sesión.");
-  return peticion.admin;
-}
-
-export function requiereDueno(peticion: FastifyRequest): AdminEnSesion {
-  const admin = requiereSesion(peticion);
-  if (admin.rol !== "DUENO") throw new ErrorHttp(403, "SOLO_DUENO", "Esto solo lo puede hacer el dueño.");
-  return admin;
 }
 
 /** Compara dos textos sin que el tiempo de respuesta revele cuántos caracteres coinciden. */
@@ -98,6 +75,11 @@ export async function construirApp(opciones: { db: BaseDeDatos; config: Config }
 
   app.decorateRequest("admin", null);
 
+  // Los montos son bigint (centavos): viajan como texto para no perder precisión.
+  app.setReplySerializer((carga) =>
+    JSON.stringify(carga, (_clave, valor: unknown) => (typeof valor === "bigint" ? valor.toString() : valor)),
+  );
+
   app.setErrorHandler((error, _peticion, respuesta) => {
     if (error instanceof ErrorHttp) return responderError(respuesta, error.estado, error.codigo, error.message);
     if (error instanceof ZodError) {
@@ -107,6 +89,7 @@ export async function construirApp(opciones: { db: BaseDeDatos; config: Config }
       const estado = error.codigo === "SIN_PERMISO" ? 403 : error.codigo === "NO_EXISTE" ? 404 : 409;
       return responderError(respuesta, estado, error.codigo, error.message);
     }
+    if (error instanceof ErrorNegocio) return responderError(respuesta, error.estado, error.codigo, error.message);
     if (error instanceof ErrorCaja) return responderError(respuesta, 422, "ERROR_CAJA", error.message);
     const conEstado = error as { statusCode?: number };
     if (conEstado.statusCode === 429) {
@@ -263,6 +246,8 @@ export async function construirApp(opciones: { db: BaseDeDatos; config: Config }
         const admin = await desactivarAdmin(db, { tipo: "ADMIN", adminId: dueno.id, rol: dueno.rol, ip: peticion.ip }, id);
         return { admin };
       });
+
+      rutasSabados(api, db);
 
       api.setNotFoundHandler((_peticion, respuesta) =>
         responderError(respuesta, 404, "NO_EXISTE", "Esa dirección de la API no existe."),
