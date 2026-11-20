@@ -32,4 +32,5 @@ export const configDePrueba: Config = {
   PUERTO: 0,
   DATABASE_URL: "postgresql://ignorado/test",
   SESION_DIAS: 30,
+  CODIGO_INSTALACION: "codigo-de-prueba-123",
 };

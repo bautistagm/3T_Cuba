@@ -172,7 +172,7 @@ Los jugadores reales se cargan en **febrero de 2027**. Hasta entonces se constru
 |---|---|---|
 | 1 | Diseño | ✅ Aprobado |
 | 2 | Base del backend | ✅ Monorepo, base de datos, login, roles, auditoría, libro de caja, tests y CI |
-| 3 | Publicación gratis + pantalla principal | La app instalada en el celular del dueño: login y pantalla principal con el escudo |
+| 3 | Publicación gratis + pantalla principal | La app instalada en el celular del dueño: login, instalación del dueño, pantalla principal con el escudo y gestión de administradores |
 | 4 | Sábados | Invitados, cocina por camada y gastos con foto del ticket leída por IA |
 | 5 | Caja y análisis | Libro, saldos, gráficos y preguntas a la IA |
 | 6 | Verificación de transferencias con IA | Lectura de comprobantes, cruce con los movimientos de la cuenta y bandeja "Revisar" |
@@ -189,3 +189,5 @@ Cada etapa termina con: tests pasando, revisión del dueño y prueba en un entor
 - Cómo leer los movimientos de la cuenta de Mercado Pago (API de solo lectura) (Etapa 6).
 - Contraseña de aplicación de Google para enviar desde plantelcuba@gmail.com (Etapa 7).
 - Consulta con un contador sobre Ingresos Brutos de la cuenta personal (antes de usar plata real).
+- Cambio de contraseña propio y "blanquear" la contraseña de un administrador (antes de usar la app con plata real).
+- Aviso cada 14 minutos para que la app no se duerma, y backups nocturnos (antes de usar la app con plata real).

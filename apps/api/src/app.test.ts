@@ -17,7 +17,7 @@ let ipSiguiente = 1;
 const nuevaIp = () => `10.0.0.${ipSiguiente++}`;
 
 async function login(email: string, contrasena: string, ip = nuevaIp()) {
-  return app.inject({ method: "POST", url: "/auth/login", payload: { email, contrasena }, remoteAddress: ip });
+  return app.inject({ method: "POST", url: "/api/auth/login", payload: { email, contrasena }, remoteAddress: ip });
 }
 
 async function cookieDe(email: string, contrasena: string): Promise<string> {
@@ -41,7 +41,7 @@ afterAll(async () => {
 
 describe("salud", () => {
   it("responde que la app y la base andan", async () => {
-    const respuesta = await app.inject({ method: "GET", url: "/salud" });
+    const respuesta = await app.inject({ method: "GET", url: "/api/salud" });
     expect(respuesta.statusCode).toBe(200);
     expect(respuesta.json()).toEqual({ ok: true });
   });
@@ -97,20 +97,20 @@ describe("login", () => {
   });
 
   it("sin sesión no se puede ver nada privado", async () => {
-    const respuesta = await app.inject({ method: "GET", url: "/auth/yo" });
+    const respuesta = await app.inject({ method: "GET", url: "/api/auth/yo" });
     expect(respuesta.statusCode).toBe(401);
   });
 
   it("una cookie inventada no sirve", async () => {
-    const respuesta = await app.inject({ method: "GET", url: "/auth/yo", headers: { cookie: `${COOKIE_SESION}=inventada` } });
+    const respuesta = await app.inject({ method: "GET", url: "/api/auth/yo", headers: { cookie: `${COOKIE_SESION}=inventada` } });
     expect(respuesta.statusCode).toBe(401);
   });
 
   it("al cerrar sesión, la cookie deja de servir", async () => {
     const cookie = await cookieDe(DUENO.email, DUENO.contrasena);
-    expect((await app.inject({ method: "GET", url: "/auth/yo", headers: { cookie } })).statusCode).toBe(200);
-    expect((await app.inject({ method: "POST", url: "/auth/logout", headers: { cookie } })).statusCode).toBe(200);
-    expect((await app.inject({ method: "GET", url: "/auth/yo", headers: { cookie } })).statusCode).toBe(401);
+    expect((await app.inject({ method: "GET", url: "/api/auth/yo", headers: { cookie } })).statusCode).toBe(200);
+    expect((await app.inject({ method: "POST", url: "/api/auth/logout", headers: { cookie } })).statusCode).toBe(200);
+    expect((await app.inject({ method: "GET", url: "/api/auth/yo", headers: { cookie } })).statusCode).toBe(401);
   });
 });
 
@@ -119,7 +119,7 @@ describe("administradores", () => {
 
   it("el dueño agrega un admin, que recibe su cuenta de efectivo y queda en la auditoría", async () => {
     const cookie = await cookieDe(DUENO.email, DUENO.contrasena);
-    const respuesta = await app.inject({ method: "POST", url: "/admins", headers: { cookie }, payload: ADMIN });
+    const respuesta = await app.inject({ method: "POST", url: "/api/admins", headers: { cookie }, payload: ADMIN });
     expect(respuesta.statusCode).toBe(201);
     const admin = respuesta.json().admin as { id: string; rol: string };
     expect(admin.rol).toBe("ADMIN");
@@ -142,7 +142,7 @@ describe("administradores", () => {
     const cookie = await cookieDe(DUENO.email, DUENO.contrasena);
     const respuesta = await app.inject({
       method: "POST",
-      url: "/admins",
+      url: "/api/admins",
       headers: { cookie },
       payload: { ...ADMIN, email: "TOMAS@ejemplo.com" },
     });
@@ -153,7 +153,7 @@ describe("administradores", () => {
     const cookie = await cookieDe(DUENO.email, DUENO.contrasena);
     const respuesta = await app.inject({
       method: "POST",
-      url: "/admins",
+      url: "/api/admins",
       headers: { cookie },
       payload: { nombre: "X", email: "no-es-email", contrasena: "corta" },
     });
@@ -164,35 +164,35 @@ describe("administradores", () => {
     const cookie = await cookieDe(ADMIN.email, ADMIN.contrasena);
     const crear = await app.inject({
       method: "POST",
-      url: "/admins",
+      url: "/api/admins",
       headers: { cookie },
       payload: { nombre: "Juan", email: "juan@ejemplo.com", contrasena: "clave-de-juan-1" },
     });
     expect(crear.statusCode).toBe(403);
-    expect((await app.inject({ method: "GET", url: "/admins", headers: { cookie } })).statusCode).toBe(403);
+    expect((await app.inject({ method: "GET", url: "/api/admins", headers: { cookie } })).statusCode).toBe(403);
   });
 
   it("al desactivar un admin, se le cierran las sesiones y no puede volver a entrar", async () => {
     const cookieAdmin = await cookieDe(ADMIN.email, ADMIN.contrasena);
     const cookieDueno = await cookieDe(DUENO.email, DUENO.contrasena);
-    const lista = await app.inject({ method: "GET", url: "/admins", headers: { cookie: cookieDueno } });
+    const lista = await app.inject({ method: "GET", url: "/api/admins", headers: { cookie: cookieDueno } });
     const tomas = (lista.json().admins as { id: string; email: string }[]).find((a) => a.email === ADMIN.email);
     if (!tomas) throw new Error("No aparece Tomás en la lista");
 
     const respuesta = await app.inject({
       method: "POST",
-      url: `/admins/${tomas.id}/desactivar`,
+      url: `/api/admins/${tomas.id}/desactivar`,
       headers: { cookie: cookieDueno },
     });
     expect(respuesta.statusCode).toBe(200);
-    expect((await app.inject({ method: "GET", url: "/auth/yo", headers: { cookie: cookieAdmin } })).statusCode).toBe(401);
+    expect((await app.inject({ method: "GET", url: "/api/auth/yo", headers: { cookie: cookieAdmin } })).statusCode).toBe(401);
     expect((await login(ADMIN.email, ADMIN.contrasena)).statusCode).toBe(401);
   });
 
   it("el dueño no se puede desactivar a sí mismo por esta vía", async () => {
     const cookie = await cookieDe(DUENO.email, DUENO.contrasena);
-    const yo = (await app.inject({ method: "GET", url: "/auth/yo", headers: { cookie } })).json().admin as { id: string };
-    const respuesta = await app.inject({ method: "POST", url: `/admins/${yo.id}/desactivar`, headers: { cookie } });
+    const yo = (await app.inject({ method: "GET", url: "/api/auth/yo", headers: { cookie } })).json().admin as { id: string };
+    const respuesta = await app.inject({ method: "POST", url: `/api/admins/${yo.id}/desactivar`, headers: { cookie } });
     expect(respuesta.statusCode).toBe(404);
   });
 
@@ -202,7 +202,7 @@ describe("administradores", () => {
     for (let i = 1; i <= 6; i++) {
       const r = await app.inject({
         method: "POST",
-        url: "/admins",
+        url: "/api/admins",
         headers: { cookie },
         payload: { nombre: `Admin ${i}`, email: `admin${i}@ejemplo.com`, contrasena: "clave-segura-123" },
       });

@@ -11,7 +11,8 @@
     "typecheck": "pnpm --filter @3t/shared build && pnpm -r typecheck",
     "lint": "eslint .",
     "test": "pnpm --filter @3t/shared build && pnpm -r test",
-    "check": "pnpm lint && pnpm typecheck && pnpm test"
+    "check": "pnpm lint && pnpm typecheck && pnpm test",
+    "build:produccion": "pnpm --filter @3t/shared build && pnpm --filter @3t/web build && pnpm --filter @3t/api build"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
