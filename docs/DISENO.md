@@ -1,7 +1,9 @@
 # 3T — Documento de diseño (Etapa 1)
 
-> Estado: **borrador para aprobar**. Ningún código se escribe hasta que este documento esté aprobado.
-> Prototipo visual: canvas "3T – Prototipo" (16 pantallas).
+> Estado: **aprobado** (se actualiza con cada decisión nueva).
+> Prototipo visual: canvas "3T – Prototipo".
+
+> **Regla principal: costo cero.** La app no puede generar ningún gasto: ni hosting, ni base de datos, ni comisiones, ni mensajes pagos, ni IA paga. Toda pieza nueva tiene que tener una opción gratis; si no la tiene, no entra.
 
 ## 1. Qué es 3T
 
@@ -13,9 +15,9 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 |---|---|---|
 | Dueño (Bautista) | App instalada en el celular (PWA), con login | **Todo.** Es el único que puede anular, dar de baja, eliminar, cambiar montos y gestionar administradores |
 | Administradores (hasta 5) | App instalada, con login | Operar: registrar pagos, revisar comprobantes, cargar gastos, cobrar invitados, puerta de fiesta. Solo registran: no pueden anular, eliminar, dar de baja ni cambiar montos |
-| Jugadores (~150) | Solo links personales por WhatsApp, sin login ni instalación | Ver su cuota, pagar, adherirse al débito, subir comprobante |
+| Jugadores (~150) | Solo un link personal, sin login ni instalación | Ver su cuota, ver el alias y subir el comprobante de su transferencia |
 | Responsable de la camada que cocina | Link por WhatsApp válido para esa fecha | Subir fotos de tickets |
-| Gente de afuera (fiestas) | Link público de venta | Comprar entradas |
+| Gente de afuera (fiestas) | Link público de venta | Ver el alias, cargar sus datos y subir el comprobante de la transferencia |
 
 ## 2. Reglas de negocio acordadas
 
@@ -26,21 +28,29 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 - No hay fecha de vencimiento formal; el objetivo es cobrar en los primeros días del mes.
 - Altas, bajas y lesionados: pagan igual que todos mientras estén activos.
 
-**Medios de pago**
-- Link de pago personal (Mercado Pago), débito automático el día 1 (suscripción de Mercado Pago), transferencia al alias con comprobante, efectivo entregado a un administrador.
-- La cuenta es, por ahora, un **alias personal dedicado solo al plantel**. Cambiar a una cuenta del club es solo cambiar credenciales.
+**Medios de pago** (sin comisiones)
+- **Transferencia al alias** del plantel, con comprobante. No se usan links de pago ni débito automático de Mercado Pago porque cobran comisión.
+- **Efectivo** entregado a un administrador.
+- Quien quiera "débito automático" programa en su propio banco o billetera una transferencia automática el día 1. Es gratis y para la app es una transferencia más.
+- La cuenta es, por ahora, un **alias personal dedicado solo al plantel**. Cambiar a una cuenta del club es solo cambiar el alias y las credenciales.
 - Un jugador puede pagar más de un mes junto (ej.: noviembre y diciembre).
 
-**Recordatorios**
-- Día 1: mensaje con el monto, el link de pago y la invitación al débito automático.
-- Recordatorios automáticos a los que deben en días configurables (por defecto 3, 5, 7 y 10, a las 10:00). El que paga deja de recibirlos al instante.
+**Verificación automática de transferencias con IA**
+- El jugador (o el comprador de una entrada) sube la captura del comprobante en su link. La IA lee fecha, hora, monto, nombre y CUIT/CUIL de quien pagó, banco y número de operación.
+- La app cruza esos datos con los **movimientos reales de la cuenta**, leídos de Mercado Pago en modo solo lectura (sin costo). Si coinciden monto, fecha y número de operación, el pago se **confirma solo** y se imputa a la persona correcta.
+- Un mismo número de operación no se puede usar dos veces (evita que dos personas presenten el mismo comprobante).
+- Si algo no coincide o falta (comprobante editado, monto distinto, la plata todavía no figura), va a la bandeja **"Revisar"** para que lo resuelva un admin. La IA nunca confirma algo que no pudo verificar contra la cuenta.
+
+**Recordatorios** (sin envíos automáticos por ahora)
+- La app arma la **lista de los que faltan pagar** del mes, con su teléfono. Los admins deciden cómo avisarle a cada uno.
+- Desde la lista, un botón abre WhatsApp con un mensaje ya escrito para esa persona (gratis, lo envía el admin).
 
 **Invitados del tercer tiempo**
 - No se registran por nombre: van a una **cuenta genérica** por sábado. Se anota cada cobro (monto, medio, quién cobró, nota opcional).
 
 **Cocina por camada (sábados de local)**
 - Un sábado de por medio, cuando el plantel juega de local, cocina una camada distinta. La camada y el presupuesto se asignan unos días antes y **el monto cambia según la fecha**.
-- El responsable de la camada saca fotos de los tickets; la IA los registra como gastos **producto por producto**. Los administradores pueden agregar gastos a mano.
+- El responsable de la camada saca fotos de los tickets; la IA los registra automáticamente como gastos **producto por producto**. Los administradores pueden agregar gastos a mano.
 - Al cerrar la fecha se rinde: si sobra plata, la camada la devuelve; si se pasaron, queda registrado.
 
 **Fiestas**
@@ -49,7 +59,8 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
   - **Opcional:** lugar, cupo total, cupo por tipo y tandas (cada tanda con su precio, cupo y fecha de fin). Sin tandas, cada tipo se vende a un precio único; sin cupo, no hay límite de entradas.
   - Mientras no tenga ventas se puede editar libremente; después, solo el dueño puede cambiar precios futuros.
 - **Un link de venta por tipo de entrada** (uno para mujeres, otro para hombres). Cada link vende solo ese tipo, así se puede difundir cada uno por separado.
-- Entradas **nominales**: nombre, DNI, **email (obligatorio)** y teléfono (opcional). No se transfieren.
+- **Cómo se compra (sin comisiones):** el link muestra el precio y el **alias del plantel**. La persona transfiere, completa sus datos y sube el comprobante. La IA lo verifica igual que una cuota; si está todo bien, se registra la persona en la lista de la fiesta y **se le manda la entrada con el QR al email** que cargó. Si hay dudas, queda en "Revisar" y la entrada sale cuando un admin lo confirma.
+- Entradas **nominales**: nombre, DNI, **email (obligatorio)** y teléfono (opcional). No se transfieren. Si la misma persona compra varias, cada una lleva su nombre y DNI.
 - **El tipo se controla en la puerta con el DNI.** La página de compra lo avisa antes de pagar. Si el DNI no coincide con el tipo comprado, en la puerta se cobra la diferencia (queda registrada en la caja de la fiesta) o no se deja pasar.
 - **La entrada con su QR llega por email**, desde la casilla del plantel **plantelcuba@gmail.com**. La clave de envío (contraseña de aplicación de Google) se carga solo como secreto del servidor. El QR es un código aleatorio firmado, imposible de adivinar. Si no le llegó, se puede reenviar desde la app.
 - **Listas separadas por tipo**: la app muestra los compradores en dos listas (Mujeres / Hombres), con totales de cada una, y se pueden exportar a una planilla con una hoja por tipo.
@@ -63,6 +74,10 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 - Saldo separado en "cuenta" y "efectivo en manos de cada admin".
 - Análisis: gastos por mes con explicación, gasto por categoría y por producto, y preguntas en lenguaje natural a la IA.
 
+**Inteligencia artificial**
+- Se usa **la mejor IA disponible gratis** (hoy, Gemini de Google en su plan gratuito) para leer tickets y comprobantes y para el análisis de Caja. Si mañana aparece una mejor gratis, se cambia.
+- Decisión del dueño: se acepta que en el plan gratis el proveedor puede usar lo que se le manda para mejorar sus productos.
+
 ## 3. Reglas de seguridad para la plata (no negociables)
 
 1. **Montos en centavos, como enteros** (`BIGINT`). Nunca decimales ni floats.
@@ -70,13 +85,13 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
    - **Jugadores**: el dueño puede **dar de baja** (deja de generar cuotas y sale de las listas, pero se puede reactivar) o **eliminar**. Si el jugador nunca pagó nada, se borra por completo. Si tiene pagos, se borran sus datos personales (nombre, DNI, teléfono, email) y sus pagos quedan como "Jugador eliminado", para que la caja siga cerrando. Eliminar pide escribir el nombre del jugador para confirmar y queda en la auditoría.
 3. **Libro de caja de doble partida**: cada evento de plata es un asiento con dos o más movimientos que suman exactamente cero (de dónde sale y adónde va). El saldo se calcula sumando movimientos; nunca se guarda un saldo "a mano". La base de datos rechaza asientos desbalanceados, cambios y borrados, y solo acepta anulaciones que sean el espejo exacto del asiento original.
 4. **Auditoría**: cada cambio de datos guarda quién, cuándo, qué había antes y qué hay después.
-5. **Webhooks de Mercado Pago**: se verifica la firma, se guarda el evento y se procesa **una sola vez** (idempotencia por ID de evento). El estado del pago siempre se vuelve a consultar a la API de Mercado Pago; nunca se confía solo en el aviso.
-6. **Conciliación diaria automática**: lo registrado en 3T contra lo que informa Mercado Pago. Cualquier diferencia genera una alerta al dueño.
-7. **La IA propone, una persona confirma** cuando hay dudas. Un comprobante se confirma solo si monto, fecha y número de operación coinciden exactamente con un movimiento real de la cuenta. Todo lo demás va a la bandeja "Revisar".
+5. **Mercado Pago solo en lectura**: la app lee los movimientos de la cuenta pero no puede mover plata. Cada movimiento se usa para confirmar un único pago.
+6. **Conciliación diaria automática**: lo registrado en 3T contra los movimientos de la cuenta. Cualquier diferencia queda marcada para el dueño.
+7. **La IA confirma sola solo lo que puede verificar.** Un comprobante se confirma automáticamente únicamente si monto, fecha y número de operación coinciden con un movimiento real de la cuenta que no se haya usado antes. Todo lo demás va a la bandeja "Revisar".
 8. **Operaciones críticas en transacciones**: registrar un pago, imputarlo y asentarlo en caja ocurre todo junto o no ocurre.
 9. **Links personales** con tokens largos y aleatorios, que se pueden revocar. Los links de camada vencen al cerrar la fecha.
-10. **Secretos** (credenciales de Mercado Pago, WhatsApp, IA) solo en variables de entorno del servidor, nunca en el código ni en el repositorio.
-11. **Backups diarios** de la base de datos, con restauración probada.
+10. **Secretos** (credenciales de Mercado Pago, del email, de la IA) solo en variables de entorno del servidor, nunca en el código ni en el repositorio.
+11. **Backups diarios** de la base de datos (copia cifrada cada noche con GitHub Actions), con restauración probada.
 
 ## 4. Arquitectura técnica
 
@@ -98,10 +113,14 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 | Frontend | React + Vite como PWA | Se instala en el celular sin tienda de apps |
 | Tests | Vitest + base de datos real en Docker para integración | Los flujos de plata se prueban contra una base real |
 | CI | GitHub Actions | Cada cambio corre tests y chequeos antes de integrarse |
-| Pagos | API de Mercado Pago (Checkout Pro, Suscripciones, Webhooks) | Ya conocida por los jugadores |
-| Mensajes | WhatsApp para jugadores (al principio botón con mensaje armado; después API oficial). Email para las entradas de fiesta, desde la casilla del plantel | Cada canal donde la gente lo espera |
-| IA | API de Claude para leer tickets/comprobantes y responder preguntas de caja | Salida estructurada y verificable |
-| Hosting | A definir en la Etapa 2 (servicio administrado con Postgres y backups) | Costo estimado bajo |
+| Pagos | Transferencias al alias + API de Mercado Pago solo para leer movimientos | Sin comisiones |
+| Mensajes | Botón que abre WhatsApp con el mensaje armado (lo envía el admin). Email desde plantelcuba@gmail.com para las entradas | Gratis |
+| IA | La mejor IA con plan gratis (hoy Gemini) para tickets, comprobantes y análisis | Gratis |
+| Hosting de pantallas | Render, sitio estático | Gratis y siempre prendido |
+| Hosting de la API | Render, plan Free, con un aviso cada 14 minutos para que no se duerma (sin tocar la base) | Gratis |
+| Base de datos | Neon, plan Free (PostgreSQL, 1 GB, sin vencimiento) | Gratis |
+| Archivos (fotos de tickets y comprobantes) | Almacenamiento de archivos de Neon (plan Free) | Gratis |
+| Backups y tareas programadas | GitHub Actions | Gratis |
 
 ## 5. Modelo de datos
 
@@ -114,11 +133,11 @@ Convenciones: `id` UUID; `*_centavos` BIGINT; `creado_en` / `actualizado_en` en 
 ### Cuotas y pagos
 - **periodos_cuota**: año, mes (únicos juntos), monto_centavos, es_mes_fiesta, nota, estado (`ABIERTO` | `CERRADO`).
 - **cargos**: lo que debe cada jugador en cada período. jugador, período (únicos juntos), monto_centavos, estado (`PENDIENTE` | `PAGADO` | `ANULADO`).
-- **pagos**: todo dinero que entra. origen (`CUOTA` | `INVITADO` | `ENTRADA_FIESTA` | `DEVOLUCION_COCINA` | `OTRO`), monto_centavos, medio (`MP_LINK` | `MP_DEBITO` | `TRANSFERENCIA` | `EFECTIVO`), estado (`PENDIENTE` | `CONFIRMADO` | `ANULADO`), id de pago de Mercado Pago (único), recibido_por (admin, si es efectivo), comprobante, sábado o fiesta asociados, motivo/autor de anulación.
+- **pagos**: todo dinero que entra. origen (`CUOTA` | `INVITADO` | `ENTRADA_FIESTA` | `DEVOLUCION_COCINA` | `OTRO`), monto_centavos, medio (`TRANSFERENCIA` | `EFECTIVO`), estado (`PENDIENTE` | `CONFIRMADO` | `ANULADO`), número de operación de la transferencia (único), movimiento de la cuenta con el que se verificó, recibido_por (admin, si es efectivo), comprobante, sábado o fiesta asociados, motivo/autor de anulación.
 - **imputaciones**: qué cargos cancela cada pago (pago, cargo, monto). Permite pagar dos meses juntos.
-- **suscripciones_debito**: jugador, id de suscripción de Mercado Pago, estado, monto actual.
-- **comprobantes**: archivo, datos leídos por la IA, nivel de coincidencia, jugador sugerido, estado (`PENDIENTE_REVISION` | `CONFIRMADO` | `RECHAZADO`), quién lo revisó.
-- **notificaciones**: destinatario, tipo (aviso del día 1, recordatorio, confirmación, entrada), canal (`WHATSAPP` | `EMAIL`), estado, error, fecha de envío.
+- **comprobantes**: archivo, para qué es (cuota o entrada), datos leídos por la IA (fecha, monto, nombre y CUIT/CUIL de quien pagó, banco, número de operación), resultado de la verificación contra la cuenta, estado (`VERIFICADO_AUTO` | `PENDIENTE_REVISION` | `CONFIRMADO` | `RECHAZADO`), quién lo revisó.
+- **movimientos_cuenta**: copia de los movimientos de entrada leídos de Mercado Pago (id, fecha, monto, quién transfirió), y a qué pago quedó asignado cada uno (como máximo uno).
+- **notificaciones**: destinatario, tipo (confirmación de pago, entrada), canal (`EMAIL`), estado, error, fecha de envío.
 
 ### Sábados y cocina
 - **sabados**: fecha, es_local, notas.
@@ -132,14 +151,13 @@ Convenciones: `id` UUID; `*_centavos` BIGINT; `creado_en` / `actualizado_en` en 
 - **fiestas**: nombre o motivo, fecha y hora, lugar (opcional), cupo (opcional), estado (`BORRADOR` | `A_LA_VENTA` | `CERRADA` | `FINALIZADA`), creada por.
 - **tipos_entrada**: fiesta, nombre (ej. "Mujer", "Hombre"), precio_centavos (precio único si no hay tandas), cupo (opcional), token del link de venta propio.
 - **tandas** (opcionales): tipo de entrada, nombre, precio_centavos, cupo (opcional), desde, hasta, orden. Si un tipo tiene tandas, manda el precio de la tanda vigente.
-- **entradas**: fiesta, tanda, tipo de entrada, origen (`EXTERNA` | `JUGADOR`), nombre, DNI, email, teléfono, código único, pago, estado (`VALIDA` | `USADA` | `ANULADA`), hora de ingreso y quién la marcó, diferencia cobrada en puerta (si hubo).
+- **entradas**: fiesta, tanda, tipo de entrada, origen (`EXTERNA` | `JUGADOR`), nombre, DNI, email, teléfono, código único, pago, estado (`PENDIENTE_PAGO` | `VALIDA` | `USADA` | `ANULADA`), hora de ingreso y quién la marcó, diferencia cobrada en puerta (si hubo).
 
 ### Caja y control
 - **cuentas_caja**: dónde está la plata (`ACTIVO`: la cuenta del alias, el efectivo de cada admin) y por qué entra o sale (`INGRESO`: cuotas, invitados, entradas; `EGRESO`: carne, bebidas, insumos, fiesta...).
 - **asientos_caja**: cada evento de plata: fecha, descripción, origen (pago, gasto, rendición, anulación, ajuste) y a qué asiento anula, si es una anulación.
 - **movimientos_caja**: las líneas de cada asiento: cuenta y monto_centavos con signo. Las líneas de un asiento suman cero.
 - **rendiciones**: un admin entrega o deposita efectivo: admin, monto, destino, confirmado por.
-- **eventos_webhook**: proveedor, id del evento (único), contenido, procesado_en, resultado.
 - **conciliaciones**: fecha, resultado, diferencias encontradas.
 - **auditoria**: actor, acción, entidad, id, antes, después, fecha, IP.
 
@@ -148,28 +166,26 @@ Convenciones: `id` UUID; `*_centavos` BIGINT; `creado_en` / `actualizado_en` en 
 
 ## 6. Plan por etapas
 
+Los jugadores reales se cargan en **febrero de 2027**. Hasta entonces se construye todo y se prueba con jugadores de prueba; primero lo que no depende de ellos.
+
 | # | Etapa | Resultado |
 |---|---|---|
-| 1 | **Diseño** (este documento) | Aprobado por el dueño |
-| 2 | Base del backend | Monorepo, base de datos, login, roles, auditoría, libro de caja, tests y CI |
-| 3 | Jugadores | Alta, baja y modificación; importación desde el Formulario de Google |
-| 4 | Cuotas y pagos manuales | Períodos, cargos, efectivo, transferencias, anulaciones, rendición de efectivo |
-| 5 | Panel de administración: Pagos | Pantallas de la sección Pagos funcionando con datos reales |
-| 6 | Mercado Pago: links de pago | Links personales, webhooks y conciliación diaria (primero en modo de prueba) |
-| 7 | Débito automático | Suscripciones con cobro el día 1 y ajuste de monto mensual |
-| 8 | WhatsApp | Aviso del día 1, recordatorios y confirmaciones |
-| 9 | Comprobantes con IA | Lectura, coincidencia y bandeja "Revisar" |
-| 10 | Sábados | Invitados, cocina por camada y gastos con foto del ticket |
-| 11 | Caja y análisis | Libro, saldos, gráficos y preguntas a la IA |
-| 12 | Fiestas | Tandas, venta pública, entradas con código y puerta |
-| 13 | Stock y proveedores | 2027 |
+| 1 | Diseño | ✅ Aprobado |
+| 2 | Base del backend | ✅ Monorepo, base de datos, login, roles, auditoría, libro de caja, tests y CI |
+| 3 | Publicación gratis + pantalla principal | La app instalada en el celular del dueño: login y pantalla principal con el escudo |
+| 4 | Sábados | Invitados, cocina por camada y gastos con foto del ticket leída por IA |
+| 5 | Caja y análisis | Libro, saldos, gráficos y preguntas a la IA |
+| 6 | Verificación de transferencias con IA | Lectura de comprobantes, cruce con los movimientos de la cuenta y bandeja "Revisar" |
+| 7 | Fiestas | Creación, venta por alias con comprobante, entradas con QR por email y puerta |
+| 8 | Jugadores | Alta, baja, eliminación e importación desde el Formulario de Google (se usa en febrero) |
+| 9 | Cuotas y pagos | Períodos, cargos, efectivo, transferencias verificadas, anulaciones, rendiciones y lista de deudores |
+| 10 | Stock y proveedores | 2027 |
 
 Cada etapa termina con: tests pasando, revisión del dueño y prueba en un entorno de prueba antes de pasar a la siguiente.
 
 ## 7. Pendientes para decidir más adelante
 
-- Hosting (Etapa 2).
 - Monto de cada cuota, precio de invitados, alias de la cuenta (antes de usar plata real).
-- Número de WhatsApp para los mensajes y trámite con Meta (Etapa 8).
-- Servicio de envío de las entradas desde plantelcuba@gmail.com (Gmail con contraseña de aplicación u otro servicio, según el volumen) (Etapa 12).
+- Cómo leer los movimientos de la cuenta de Mercado Pago (API de solo lectura) (Etapa 6).
+- Contraseña de aplicación de Google para enviar desde plantelcuba@gmail.com (Etapa 7).
 - Consulta con un contador sobre Ingresos Brutos de la cuenta personal (antes de usar plata real).
