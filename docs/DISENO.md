@@ -45,13 +45,19 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 - La app arma la **lista de los que faltan pagar** del mes, con su teléfono. Los admins deciden cómo avisarle a cada uno.
 - Desde la lista, un botón abre WhatsApp con un mensaje ya escrito para esa persona (gratis, lo envía el admin).
 
+**Sábados**
+- Casi todos los sábados hay tercer tiempo con invitados: la app tiene siempre listo el sábado actual (o el próximo) sin que haya que crearlo. Se puede marcar si ese sábado el plantel juega **de local**.
+
 **Invitados del tercer tiempo**
-- No se registran por nombre: van a una **cuenta genérica** por sábado. Se anota cada cobro (monto, medio, quién cobró, nota opcional).
+- Todos pagan **el mismo precio**, que fija el dueño y puede cambiar cuando quiera. Cobrar es un toque.
+- Cada cobro va a la cuenta del sábado: monto, medio (efectivo o transferencia), quién cobró y, **opcionalmente, el nombre y la camada** del invitado, y una nota.
 
 **Cocina por camada (sábados de local)**
-- Un sábado de por medio, cuando el plantel juega de local, cocina una camada distinta. La camada y el presupuesto se asignan unos días antes y **el monto cambia según la fecha**.
-- El responsable de la camada saca fotos de los tickets; la IA los registra automáticamente como gastos **producto por producto**. Los administradores pueden agregar gastos a mano.
-- Al cerrar la fecha se rinde: si sobra plata, la camada la devuelve; si se pasaron, queda registrado.
+- Un sábado de por medio, cuando el plantel juega de local, cocina una camada distinta. La camada se asigna unos días antes.
+- **La camada dice cuánto necesita y el plantel le transfiere esa plata desde la caja (adelanto).** Si después piden más, se registra otra transferencia. El monto cambia según la fecha.
+- La plata adelantada queda en la caja como "en manos de la camada" hasta que se rinde.
+- El responsable de la camada saca fotos de los tickets desde un link (sin bajarse nada); la IA los registra automáticamente como gastos **producto por producto**. Si los números del ticket no cierran (los productos no suman el total), el ticket va a "Revisar". Los administradores pueden agregar gastos a mano.
+- **Cerrar y rendir:** si sobró plata, la camada la devuelve (por transferencia o en efectivo a un admin); si gastaron de más, el plantel les reintegra la diferencia. Solo el dueño puede cerrar dejando una diferencia sin devolver o sin reintegrar, con motivo.
 
 **Fiestas**
 - **No hay fiestas por defecto.** El dueño crea cada fiesta desde la sección Fiestas.
@@ -140,8 +146,10 @@ Convenciones: `id` UUID; `*_centavos` BIGINT; `creado_en` / `actualizado_en` en 
 - **notificaciones**: destinatario, tipo (confirmación de pago, entrada), canal (`EMAIL`), estado, error, fecha de envío.
 
 ### Sábados y cocina
-- **sabados**: fecha, es_local, notas.
-- **cocinas**: sábado, camada, nombre y teléfono del responsable, presupuesto_centavos (variable por fecha), token del link para tickets, estado (`ABIERTA` | `CERRADA`), resultado de la rendición.
+- **parametros**: valores que fija el dueño, como el precio de los invitados.
+- **sabados**: fecha (única), es_local, notas.
+- **pagos** con origen `INVITADO`: además de lo general, sábado, nombre (opcional) y camada (opcional) del invitado.
+- **cocinas**: sábado (una por sábado), camada, nombre y teléfono del responsable, token del link para tickets (se guarda solo su hash), estado (`ABIERTA` | `CERRADA`), cómo se cerró. Cada cocina tiene su cuenta de caja "en manos de la camada"; lo transferido, gastado, devuelto y reintegrado sale de los asientos de esa cuenta.
 
 ### Gastos
 - **gastos**: categoría (carne, bebidas, insumos, fiesta, otros), proveedor (texto por ahora; tabla en 2027), descripción, total_centavos, fecha, medio, pagado_por, foto del ticket, origen de la carga (`IA` | `MANUAL`), contexto (cocina, fiesta o sábado), estado (`CONFIRMADO` | `ANULADO`).
