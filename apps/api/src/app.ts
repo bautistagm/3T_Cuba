@@ -26,6 +26,7 @@ import { ErrorNegocio } from "./errores.js";
 import { ErrorHttp, requiereDueno, requiereSesion } from "./rutas/comun.js";
 import { rutasSabados } from "./rutas/sabados.js";
 import { rutasTickets } from "./rutas/tickets.js";
+import { rutasCaja } from "./rutas/caja.js";
 import { crearLectorGemini, lectorSinIa, type LectorTickets } from "./ia/lectorTickets.js";
 
 export { ErrorHttp, requiereDueno, requiereSesion };
@@ -258,6 +259,7 @@ export async function construirApp(opciones: {
 
       rutasSabados(api, db);
       rutasTickets(api, db, lectorTickets);
+      rutasCaja(api, db, lectorTickets);
 
       api.setNotFoundHandler((_peticion, respuesta) =>
         responderError(respuesta, 404, "NO_EXISTE", "Esa dirección de la API no existe."),

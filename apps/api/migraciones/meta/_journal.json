@@ -36,6 +36,20 @@
       "when": 1795215716089,
       "tag": "0004_tickets",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795217302150,
+      "tag": "0005_caja",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795217302839,
+      "tag": "0006_protecciones_caja",
+      "breakpoints": true
     }
   ]
 }

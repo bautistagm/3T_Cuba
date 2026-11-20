@@ -17,6 +17,8 @@ export const CUENTAS_BASE: readonly { codigo: string; nombre: string; tipo: Tipo
   { codigo: "EGRESO:COCINA_CAMADAS", nombre: "Cocina de camadas", tipo: "EGRESO" },
   { codigo: "EGRESO:FIESTAS", nombre: "Gastos de fiestas", tipo: "EGRESO" },
   { codigo: "EGRESO:OTROS", nombre: "Otros gastos", tipo: "EGRESO" },
+  { codigo: "INGRESO:AJUSTES", nombre: "Ajustes de caja (sobrante)", tipo: "INGRESO" },
+  { codigo: "EGRESO:AJUSTES", nombre: "Ajustes de caja (faltante)", tipo: "EGRESO" },
 ];
 
 export function codigoEfectivo(adminId: string): string {

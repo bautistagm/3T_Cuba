@@ -8,14 +8,14 @@ import { actorDe, ErrorHttp, idSchema, motivoSchema, requiereSesion, textoOpcion
 import { itemsSchema } from "./sabados.js";
 
 /** La foto viaja en base64 dentro del JSON (el celular la achica antes de mandarla). */
-const fotoSchema = z.object({
+export const fotoSchema = z.object({
   imagenBase64: z
     .string()
     .min(100, "La foto está vacía.")
     .max(Math.ceil((TAMANO_MAXIMO_IMAGEN * 4) / 3) + 16, "La foto es demasiado grande.")
     .regex(/^[A-Za-z0-9+/]+={0,2}$/, "La foto no llegó bien."),
 });
-const LIMITE_CUERPO = 7 * 1024 * 1024;
+export const LIMITE_CUERPO = 7 * 1024 * 1024;
 
 export function rutasTickets(api: FastifyInstance, db: BaseDeDatos, lector: LectorTickets) {
   api.post("/cocinas/:id/tickets", { bodyLimit: LIMITE_CUERPO }, async (peticion, respuesta) => {
