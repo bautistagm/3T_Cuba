@@ -18,6 +18,8 @@ import {
 import type { BaseDeDatos } from "../db/cliente.js";
 import { admins } from "../db/esquema.js";
 import type { LectorTickets } from "../ia/lectorTickets.js";
+import type { AsistenteIa } from "../ia/asistente.js";
+import { explicarMes, gastosPorMes, ingresosPorMes, preguntarSobreLaPlata, productosQueMasGastan } from "../caja/analisis.js";
 import { subirTicket, ticketsDeCocina } from "../tickets/tickets.js";
 import { actorDe, idSchema, montoSchema, requiereSesion, textoOpcional } from "./comun.js";
 import { itemsSchema } from "./sabados.js";
@@ -25,7 +27,7 @@ import { fotoSchema, LIMITE_CUERPO } from "./tickets.js";
 
 const desdeSchema = z.enum(["CUENTA", "EFECTIVO"]);
 
-export function rutasCaja(api: FastifyInstance, db: BaseDeDatos, lector: LectorTickets) {
+export function rutasCaja(api: FastifyInstance, db: BaseDeDatos, lector: LectorTickets, asistente: AsistenteIa) {
   api.get("/caja", async (peticion) => {
     const yo = requiereSesion(peticion);
     const [saldos, control, pendientes, activos, miEfectivo, tickets] = await Promise.all([
@@ -103,4 +105,31 @@ export function rutasCaja(api: FastifyInstance, db: BaseDeDatos, lector: LectorT
       .parse(peticion.body);
     return respuesta.status(201).send({ control: await controlarCaja(db, actor, datos) });
   });
+
+  // --- Análisis ----------------------------------------------------------------
+  api.get("/caja/analisis", async (peticion) => {
+    requiereSesion(peticion);
+    const [gastosMes, ingresosMes, productos] = await Promise.all([gastosPorMes(db, 12), ingresosPorMes(db, 12), productosQueMasGastan(db, 6, 10)]);
+    return { gastosPorMes: gastosMes, ingresosPorMes: ingresosMes, productos };
+  });
+
+  api.post(
+    "/caja/analisis/explicar",
+    { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
+    async (peticion) => {
+      requiereSesion(peticion);
+      const { mes } = z.object({ mes: z.string() }).parse(peticion.body);
+      return { explicacion: await explicarMes(db, asistente, mes) };
+    },
+  );
+
+  api.post(
+    "/caja/analisis/preguntar",
+    { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
+    async (peticion) => {
+      requiereSesion(peticion);
+      const { pregunta } = z.object({ pregunta: z.string().max(400) }).parse(peticion.body);
+      return { respuesta: await preguntarSobreLaPlata(db, asistente, pregunta) };
+    },
+  );
 }
