@@ -68,7 +68,7 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 1. **Montos en centavos, como enteros** (`BIGINT`). Nunca decimales ni floats.
 2. **La plata nunca se borra.** Pagos, gastos y entradas se **anulan** con motivo, autor y fecha. **Solo el dueño anula.**
    - **Jugadores**: el dueño puede **dar de baja** (deja de generar cuotas y sale de las listas, pero se puede reactivar) o **eliminar**. Si el jugador nunca pagó nada, se borra por completo. Si tiene pagos, se borran sus datos personales (nombre, DNI, teléfono, email) y sus pagos quedan como "Jugador eliminado", para que la caja siga cerrando. Eliminar pide escribir el nombre del jugador para confirmar y queda en la auditoría.
-3. **Libro de caja de doble partida simplificado**: cada evento de plata genera asientos en `movimientos_caja`. El saldo se calcula sumando asientos; nunca se guarda un saldo "a mano".
+3. **Libro de caja de doble partida**: cada evento de plata es un asiento con dos o más movimientos que suman exactamente cero (de dónde sale y adónde va). El saldo se calcula sumando movimientos; nunca se guarda un saldo "a mano". La base de datos rechaza asientos desbalanceados, cambios y borrados, y solo acepta anulaciones que sean el espejo exacto del asiento original.
 4. **Auditoría**: cada cambio de datos guarda quién, cuándo, qué había antes y qué hay después.
 5. **Webhooks de Mercado Pago**: se verifica la firma, se guarda el evento y se procesa **una sola vez** (idempotencia por ID de evento). El estado del pago siempre se vuelve a consultar a la API de Mercado Pago; nunca se confía solo en el aviso.
 6. **Conciliación diaria automática**: lo registrado en 3T contra lo que informa Mercado Pago. Cualquier diferencia genera una alerta al dueño.
@@ -83,7 +83,7 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 ```
 3T_Cuba/
 ├── apps/
-│   ├── api/        Backend: Node.js + TypeScript, Fastify, Prisma, PostgreSQL
+│   ├── api/        Backend: Node.js + TypeScript, Fastify, Drizzle ORM, PostgreSQL
 │   └── web/        Frontend: React + TypeScript + Vite, PWA (panel admin + páginas públicas)
 ├── packages/
 │   └── shared/     Tipos, validaciones (Zod) y utilidades de dinero compartidas
@@ -94,7 +94,7 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 |---|---|---|
 | Lenguaje | TypeScript en todo | Un solo lenguaje y tipos compartidos entre backend y frontend |
 | API | Fastify + Zod | Rápida, simple, validación estricta de cada entrada |
-| Base de datos | PostgreSQL + Prisma | Transacciones confiables, migraciones versionadas |
+| Base de datos | PostgreSQL + Drizzle ORM | Transacciones confiables, migraciones en SQL versionadas y revisables; las reglas de la plata también se protegen dentro de la base |
 | Frontend | React + Vite como PWA | Se instala en el celular sin tienda de apps |
 | Tests | Vitest + base de datos real en Docker para integración | Los flujos de plata se prueban contra una base real |
 | CI | GitHub Actions | Cada cambio corre tests y chequeos antes de integrarse |
@@ -135,7 +135,9 @@ Convenciones: `id` UUID; `*_centavos` BIGINT; `creado_en` / `actualizado_en` en 
 - **entradas**: fiesta, tanda, tipo de entrada, origen (`EXTERNA` | `JUGADOR`), nombre, DNI, email, teléfono, código único, pago, estado (`VALIDA` | `USADA` | `ANULADA`), hora de ingreso y quién la marcó, diferencia cobrada en puerta (si hubo).
 
 ### Caja y control
-- **movimientos_caja**: el libro único. fecha, tipo (`INGRESO` | `EGRESO` | `TRANSFERENCIA_INTERNA`), cuenta (`CUENTA` | `EFECTIVO:<admin>`), monto_centavos con signo, referencia al pago, gasto o rendición que lo originó.
+- **cuentas_caja**: dónde está la plata (`ACTIVO`: la cuenta del alias, el efectivo de cada admin) y por qué entra o sale (`INGRESO`: cuotas, invitados, entradas; `EGRESO`: carne, bebidas, insumos, fiesta...).
+- **asientos_caja**: cada evento de plata: fecha, descripción, origen (pago, gasto, rendición, anulación, ajuste) y a qué asiento anula, si es una anulación.
+- **movimientos_caja**: las líneas de cada asiento: cuenta y monto_centavos con signo. Las líneas de un asiento suman cero.
 - **rendiciones**: un admin entrega o deposita efectivo: admin, monto, destino, confirmado por.
 - **eventos_webhook**: proveedor, id del evento (único), contenido, procesado_en, resultado.
 - **conciliaciones**: fecha, resultado, diferencias encontradas.
