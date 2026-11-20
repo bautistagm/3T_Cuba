@@ -25,6 +25,8 @@ import { admins } from "./db/esquema.js";
 import { ErrorNegocio } from "./errores.js";
 import { ErrorHttp, requiereDueno, requiereSesion } from "./rutas/comun.js";
 import { rutasSabados } from "./rutas/sabados.js";
+import { rutasTickets } from "./rutas/tickets.js";
+import { crearLectorGemini, lectorSinIa, type LectorTickets } from "./ia/lectorTickets.js";
 
 export { ErrorHttp, requiereDueno, requiereSesion };
 
@@ -50,8 +52,15 @@ const instalacionSchema = datosNuevoAdminSchema.extend({ codigo: z.string().min(
 
 type AdminPublico = { id: string; nombre: string; email: string; rol: "DUENO" | "ADMIN" };
 
-export async function construirApp(opciones: { db: BaseDeDatos; config: Config }): Promise<FastifyInstance> {
+export async function construirApp(opciones: {
+  db: BaseDeDatos;
+  config: Config;
+  lectorTickets?: LectorTickets;
+}): Promise<FastifyInstance> {
   const { db, config } = opciones;
+  const lectorTickets =
+    opciones.lectorTickets ??
+    (config.GEMINI_API_KEY ? crearLectorGemini({ apiKey: config.GEMINI_API_KEY, modelos: config.GEMINI_MODELOS }) : lectorSinIa);
   const enProduccion = config.NODE_ENV === "production";
 
   const app = Fastify({
@@ -248,6 +257,7 @@ export async function construirApp(opciones: { db: BaseDeDatos; config: Config }
       });
 
       rutasSabados(api, db);
+      rutasTickets(api, db, lectorTickets);
 
       api.setNotFoundHandler((_peticion, respuesta) =>
         responderError(respuesta, 404, "NO_EXISTE", "Esa dirección de la API no existe."),

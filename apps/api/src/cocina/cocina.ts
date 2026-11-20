@@ -174,25 +174,32 @@ export async function adelantar(
   });
 }
 
-/** Un gasto de la camada (cargado por un admin, o por el responsable desde su link). */
-export async function gastoDeCocina(
-  db: BaseDeDatos,
-  actor: Actor,
-  datos: { cocinaId: string; fecha?: Date | undefined; proveedor?: string | undefined; origenCarga: "IA" | "MANUAL"; items: readonly ItemGasto[] },
-) {
-  return db.transaction(async (tx) => {
-    const cocina = await cocinaBloqueada(tx, datos.cocinaId);
-    exigirAbierta(cocina);
-    return registrarGasto(tx, actor, {
-      fecha: datos.fecha ?? new Date(),
-      proveedor: datos.proveedor,
-      cuentaOrigenCodigo: codigoCuentaCocina(cocina.id),
-      cocinaId: cocina.id,
-      sabadoId: cocina.sabadoId,
-      origenCarga: datos.origenCarga,
-      items: datos.items,
-    });
+export interface DatosGastoCocina {
+  cocinaId: string;
+  fecha?: Date | undefined;
+  proveedor?: string | undefined;
+  origenCarga: "IA" | "MANUAL";
+  items: readonly ItemGasto[];
+}
+
+/** Lo mismo que gastoDeCocina, dentro de una transacción ya abierta. */
+export async function gastoDeCocinaEnTx(tx: Transaccion, actor: Actor, datos: DatosGastoCocina) {
+  const cocina = await cocinaBloqueada(tx, datos.cocinaId);
+  exigirAbierta(cocina);
+  return registrarGasto(tx, actor, {
+    fecha: datos.fecha ?? new Date(),
+    proveedor: datos.proveedor,
+    cuentaOrigenCodigo: codigoCuentaCocina(cocina.id),
+    cocinaId: cocina.id,
+    sabadoId: cocina.sabadoId,
+    origenCarga: datos.origenCarga,
+    items: datos.items,
   });
+}
+
+/** Un gasto de la camada (cargado por un admin, o por el responsable desde su link). */
+export async function gastoDeCocina(db: BaseDeDatos, actor: Actor, datos: DatosGastoCocina) {
+  return db.transaction((tx) => gastoDeCocinaEnTx(tx, actor, datos));
 }
 
 export async function resumenCocina(db: Ejecutor, cocinaId: string) {

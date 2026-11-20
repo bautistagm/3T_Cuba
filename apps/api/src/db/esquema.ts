@@ -11,6 +11,7 @@ import {
   bigint,
   boolean,
   check,
+  customType,
   date,
   index,
   jsonb,
@@ -395,4 +396,57 @@ export const gastoItems = pgTable(
     subtotalCentavos: bigint({ mode: "bigint" }).notNull(),
   },
   (t) => [index("gasto_items_gasto").on(t.gastoId), check("gasto_items_subtotal_positivo", sql`${t.subtotalCentavos} > 0`)],
+);
+
+// ---------------------------------------------------------------------------
+// Archivos (fotos de tickets). Se guardan comprimidos en la base: son pocos y chicos.
+// ---------------------------------------------------------------------------
+
+const bytes = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
+
+export const archivos = pgTable("archivos", {
+  id: uuid().primaryKey().defaultRandom(),
+  tipoMime: text().notNull(),
+  tamanoBytes: bigint({ mode: "number" }).notNull(),
+  sha256: text().notNull(),
+  contenido: bytes().notNull(),
+  creadoEn: momento().notNull().defaultNow(),
+});
+
+// ---------------------------------------------------------------------------
+// Tickets: una foto que la IA lee y convierte en gasto.
+// ---------------------------------------------------------------------------
+
+export const estadoTicket = pgEnum("estado_ticket", [
+  /** La IA lo leyó, los números cerraron y ya es un gasto. */
+  "REGISTRADO",
+  /** La IA no pudo leerlo bien o los números no cierran: lo tiene que mirar un admin. */
+  "REVISAR",
+  /** Un admin decidió que no corresponde (foto repetida, no es un ticket...). */
+  "DESCARTADO",
+]);
+
+export const tickets = pgTable(
+  "tickets",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    cocinaId: uuid().references(() => cocinas.id),
+    archivoId: uuid()
+      .notNull()
+      .references(() => archivos.id),
+    estado: estadoTicket().notNull(),
+    /** Lo que leyó la IA, tal cual. */
+    lecturaIa: jsonb(),
+    /** Por qué quedó para revisar. */
+    motivoRevision: text(),
+    gastoId: uuid().references(() => gastos.id),
+    subidoPorAdminId: uuid().references(() => admins.id),
+    resueltoPorAdminId: uuid().references(() => admins.id),
+    ...tiempos,
+  },
+  (t) => [
+    index("tickets_cocina").on(t.cocinaId),
+    index("tickets_estado").on(t.estado),
+    check("tickets_registrado_con_gasto", sql`(${t.estado} = 'REGISTRADO') = (${t.gastoId} IS NOT NULL)`),
+  ],
 );

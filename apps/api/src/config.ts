@@ -13,9 +13,16 @@ const esquemaConfig = z.object({
   CODIGO_INSTALACION: z.string().min(12, "CODIGO_INSTALACION tiene que tener al menos 12 caracteres.").optional(),
   /** Carpeta con las pantallas ya compiladas (apps/web/dist). Si no está, la API funciona sola. */
   CARPETA_WEB: z.string().optional(),
+  /** Clave gratis de Google AI Studio para leer tickets. Sin ella, los tickets quedan para cargar a mano. */
+  GEMINI_API_KEY: z.string().min(10).optional(),
+  /** Modelos de Gemini a usar, en orden de preferencia (si uno falla o se satura, se prueba el siguiente). */
+  GEMINI_MODELOS: z
+    .string()
+    .default("gemini-3.8-flash,gemini-3.5-flash-lite")
+    .transform((t) => t.split(",").map((m) => m.trim()).filter(Boolean)),
 });
 
-export type Config = z.infer<typeof esquemaConfig>;
+export type Config = z.output<typeof esquemaConfig>;
 
 /** Lee y valida la configuración. Si falta algo, la app no arranca (mejor que arrancar mal). */
 export function leerConfig(entorno: NodeJS.ProcessEnv = process.env): Config {

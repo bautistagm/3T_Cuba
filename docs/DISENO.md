@@ -154,7 +154,9 @@ Convenciones: `id` UUID; `*_centavos` BIGINT; `creado_en` / `actualizado_en` en 
 
 ### Gastos
 - **gastos**: categoría (carne, bebidas, insumos, fiesta, otros), proveedor (texto por ahora; tabla en 2027), descripción, total_centavos, fecha, medio, pagado_por, foto del ticket, origen de la carga (`IA` | `MANUAL`), contexto (cocina, fiesta o sábado), estado (`CONFIRMADO` | `ANULADO`).
-- **gasto_items**: el detalle del ticket, producto por producto: descripción, cantidad, unidad, precio unitario, subtotal. En 2027 se vincula a un producto del stock.
+- **gasto_items**: el detalle del ticket, producto por producto: descripción, cantidad, categoría y subtotal. Los productos tienen que sumar exactamente el total del gasto (la base lo controla). En 2027 se vincula a un producto del stock.
+- **tickets**: la foto, lo que leyó la IA y el estado (`REGISTRADO` | `REVISAR` | `DESCARTADO`). Un ticket se registra solo si es un ticket, se lee y los productos suman el total; si no, o si la misma foto ya se había subido, va a "Revisar".
+- **archivos**: las fotos, guardadas comprimidas en la base (son pocas y chicas).
 
 ### Fiestas
 - **fiestas**: nombre o motivo, fecha y hora, lugar (opcional), cupo (opcional), estado (`BORRADOR` | `A_LA_VENTA` | `CERRADA` | `FINALIZADA`), creada por.

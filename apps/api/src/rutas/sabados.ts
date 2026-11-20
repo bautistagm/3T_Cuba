@@ -6,6 +6,7 @@ import type { BaseDeDatos } from "../db/cliente.js";
 import { admins, sabados } from "../db/esquema.js";
 import { anularGasto, CATEGORIAS } from "../gastos/gastos.js";
 import { sabadoCorrespondiente } from "../sabados/fechas.js";
+import { ticketsDeCocina } from "../tickets/tickets.js";
 import {
   anularPago,
   buscarSabado,
@@ -19,7 +20,7 @@ import {
 } from "../sabados/sabados.js";
 import { actorDe, ErrorHttp, idSchema, montoSchema, motivoSchema, requiereSesion, textoOpcional } from "./comun.js";
 
-const itemsSchema = z
+export const itemsSchema = z
   .array(
     z.object({
       descripcion: z.string().trim().min(1, "Falta la descripción de un producto.").max(200),
@@ -192,7 +193,9 @@ export function rutasSabados(api: FastifyInstance, db: BaseDeDatos) {
       if (!cocina) throw new ErrorHttp(404, "LINK_INVALIDO", "Este link no existe o la cocina ya se cerró.");
       const [sabado] = await db.select().from(sabados).where(eq(sabados.id, cocina.sabadoId)).limit(1);
       const r = await resumenCocina(db, cocina.id);
+      const enRevision = (await ticketsDeCocina(db, cocina.id)).filter((t) => t.estado === "REVISAR").length;
       return {
+        ticketsEnRevision: enRevision,
         camada: cocina.camada,
         responsable: cocina.responsableNombre,
         fecha: sabado?.fecha,
