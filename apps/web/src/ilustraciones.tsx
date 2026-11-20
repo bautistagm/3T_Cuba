@@ -14,6 +14,18 @@ export function DibujoPagos() {
   );
 }
 
+export function DibujoSabados() {
+  return (
+    <svg width="88" height="70" viewBox="0 0 80 64" aria-hidden="true" {...trazo}>
+      <path d="M8 30h54M8 36h54" />
+      <path d="M12 30l-4 24M58 30l4 24M35 36v18" />
+      <path d="M14 26c4-5 12-5 16 0" stroke="#1B4DB1" strokeWidth="2.6" />
+      <path d="M36 26c4-5 12-5 16 0" stroke="#1B4DB1" strokeWidth="2.6" />
+      <path d="M22 18c-2-3 2-5 0-9M44 18c-2-3 2-5 0-9M66 20c-2-3 2-5 0-9" />
+    </svg>
+  );
+}
+
 export function DibujoFiestas() {
   return (
     <svg width="88" height="70" viewBox="0 0 80 64" aria-hidden="true" {...trazo}>
