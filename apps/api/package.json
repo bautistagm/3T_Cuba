@@ -19,6 +19,7 @@
     "@fastify/helmet": "^13.2.0",
     "@fastify/rate-limit": "^11.3.0",
     "@fastify/static": "^10.1.12",
+    "@google/genai": "^3.6.1",
     "@node-rs/argon2": "^2.2.2",
     "dotenv": "^18.0.10",
     "drizzle-orm": "^0.45.4",

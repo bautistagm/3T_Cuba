@@ -11,6 +11,8 @@ import {
   bigint,
   boolean,
   check,
+  customType,
+  date,
   index,
   jsonb,
   pgEnum,
@@ -144,6 +146,7 @@ export const origenAsiento = pgEnum("origen_asiento", [
   "RENDICION",
   "ANULACION",
   "AJUSTE",
+  "ADELANTO",
 ]);
 
 export const asientosCaja = pgTable(
@@ -189,5 +192,261 @@ export const movimientosCaja = pgTable(
     index("movimientos_asiento").on(t.asientoId),
     index("movimientos_cuenta").on(t.cuentaId),
     check("movimientos_monto_no_cero", sql`${t.montoCentavos} <> 0`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Parámetros que fija el dueño (por ejemplo, el precio de los invitados).
+// ---------------------------------------------------------------------------
+
+export const parametros = pgTable("parametros", {
+  clave: text().primaryKey(),
+  valor: text().notNull(),
+  actualizadoPorAdminId: uuid().references(() => admins.id),
+  actualizadoEn: momento().notNull().defaultNow(),
+});
+
+// ---------------------------------------------------------------------------
+// Sábados
+// ---------------------------------------------------------------------------
+
+export const sabados = pgTable("sabados", {
+  id: uuid().primaryKey().defaultRandom(),
+  /** Fecha del sábado (día en Argentina), "AAAA-MM-DD". */
+  fecha: date({ mode: "string" }).notNull().unique(),
+  esLocal: boolean().notNull().default(false),
+  notas: text(),
+  ...tiempos,
+});
+
+// ---------------------------------------------------------------------------
+// Pagos: toda la plata que entra (por ahora, invitados; después cuotas y entradas).
+// Un pago no se borra ni se modifica: solo se anula (la base lo controla).
+// ---------------------------------------------------------------------------
+
+export const origenPago = pgEnum("origen_pago", ["CUOTA", "INVITADO", "ENTRADA_FIESTA", "OTRO"]);
+export const medioPago = pgEnum("medio_pago", ["TRANSFERENCIA", "EFECTIVO"]);
+export const estadoRegistro = pgEnum("estado_registro", ["CONFIRMADO", "ANULADO"]);
+
+const anulacion = {
+  estado: estadoRegistro().notNull().default("CONFIRMADO"),
+  anuladoEn: momento(),
+  anuladoPorAdminId: uuid().references(() => admins.id),
+  motivoAnulacion: text(),
+  anulacionAsientoId: uuid().references(() => asientosCaja.id),
+};
+
+const anulacionCoherente = (nombre: string, t: { estado: AnyPgColumn; anuladoEn: AnyPgColumn; motivoAnulacion: AnyPgColumn; anulacionAsientoId: AnyPgColumn }) =>
+  check(
+    nombre,
+    sql`(${t.estado} = 'ANULADO') = (${t.anuladoEn} IS NOT NULL AND ${t.motivoAnulacion} IS NOT NULL AND ${t.anulacionAsientoId} IS NOT NULL)`,
+  );
+
+export const pagos = pgTable(
+  "pagos",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    origen: origenPago().notNull(),
+    montoCentavos: bigint({ mode: "bigint" }).notNull(),
+    medio: medioPago().notNull(),
+    fecha: momento().notNull(),
+    sabadoId: uuid().references(() => sabados.id),
+    /** Opcionales: quién pagó (para invitados se puede dejar vacío). */
+    nombrePagador: text(),
+    camadaPagador: text(),
+    nota: text(),
+    /** Si fue en efectivo, qué admin tiene la plata. */
+    recibidoPorAdminId: uuid().references(() => admins.id),
+    registradoPorAdminId: uuid().references(() => admins.id),
+    asientoId: uuid()
+      .notNull()
+      .unique()
+      .references(() => asientosCaja.id),
+    ...anulacion,
+    ...tiempos,
+  },
+  (t) => [
+    index("pagos_sabado").on(t.sabadoId),
+    index("pagos_fecha").on(t.fecha),
+    check("pagos_monto_positivo", sql`${t.montoCentavos} > 0`),
+    check("pagos_efectivo_con_receptor", sql`(${t.medio} <> 'EFECTIVO') OR (${t.recibidoPorAdminId} IS NOT NULL)`),
+    check("pagos_invitado_con_sabado", sql`(${t.origen} <> 'INVITADO') OR (${t.sabadoId} IS NOT NULL)`),
+    anulacionCoherente("pagos_anulacion_coherente", t),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Cocina de la camada (sábados de local)
+// ---------------------------------------------------------------------------
+
+export const estadoCocina = pgEnum("estado_cocina", ["ABIERTA", "CERRADA"]);
+
+export const cocinas = pgTable(
+  "cocinas",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    sabadoId: uuid()
+      .notNull()
+      .unique()
+      .references(() => sabados.id),
+    camada: text().notNull(),
+    responsableNombre: text().notNull(),
+    responsableTelefono: text(),
+    /** Hash del token del link del responsable. El link solo se ve al crearlo o regenerarlo. */
+    tokenHash: text().notNull().unique(),
+    estado: estadoCocina().notNull().default("ABIERTA"),
+    cerradaEn: momento(),
+    cerradaPorAdminId: uuid().references(() => admins.id),
+    notaCierre: text(),
+    ...tiempos,
+  },
+  (t) => [check("cocinas_cierre_coherente", sql`(${t.estado} = 'CERRADA') = (${t.cerradaEn} IS NOT NULL)`)],
+);
+
+/** Plata que va y viene entre el plantel y la camada que cocina. */
+export const tipoMovimientoCocina = pgEnum("tipo_movimiento_cocina", [
+  /** El plantel le transfiere plata a la camada. */
+  "ADELANTO",
+  /** La camada devuelve lo que sobró. */
+  "DEVOLUCION",
+  /** El plantel le devuelve a la camada lo que gastó de más. */
+  "REINTEGRO",
+  /** Al cerrar, sobró plata y el dueño decide no reclamarla. */
+  "SOBRANTE_NO_DEVUELTO",
+  /** Al cerrar, la camada gastó de más y el dueño decide no reintegrarlo (lo pone la camada). */
+  "EXCESO_NO_REINTEGRADO",
+]);
+
+export const movimientosCocina = pgTable(
+  "movimientos_cocina",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    cocinaId: uuid()
+      .notNull()
+      .references(() => cocinas.id),
+    tipo: tipoMovimientoCocina().notNull(),
+    montoCentavos: bigint({ mode: "bigint" }).notNull(),
+    medio: medioPago(),
+    nota: text(),
+    registradoPorAdminId: uuid()
+      .notNull()
+      .references(() => admins.id),
+    asientoId: uuid()
+      .notNull()
+      .unique()
+      .references(() => asientosCaja.id),
+    ...anulacion,
+    ...tiempos,
+  },
+  (t) => [
+    index("movimientos_cocina_cocina").on(t.cocinaId),
+    check("movimientos_cocina_monto_positivo", sql`${t.montoCentavos} > 0`),
+    anulacionCoherente("movimientos_cocina_anulacion_coherente", t),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Gastos: toda la plata que sale para comprar algo, con su detalle producto por producto.
+// ---------------------------------------------------------------------------
+
+export const categoriaGasto = pgEnum("categoria_gasto", ["CARNE", "BEBIDAS", "INSUMOS", "OTROS"]);
+export const origenCarga = pgEnum("origen_carga", ["IA", "MANUAL"]);
+
+export const gastos = pgTable(
+  "gastos",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    fecha: momento().notNull(),
+    proveedor: text(),
+    descripcion: text().notNull(),
+    totalCentavos: bigint({ mode: "bigint" }).notNull(),
+    /** De qué cuenta salió la plata: la de la cocina, la cuenta del plantel o el efectivo de un admin. */
+    cuentaOrigenCodigo: text().notNull(),
+    cocinaId: uuid().references(() => cocinas.id),
+    sabadoId: uuid().references(() => sabados.id),
+    origenCarga: origenCarga().notNull(),
+    /** Null si lo cargó el responsable de la camada desde su link. */
+    registradoPorAdminId: uuid().references(() => admins.id),
+    asientoId: uuid()
+      .notNull()
+      .unique()
+      .references(() => asientosCaja.id),
+    ...anulacion,
+    ...tiempos,
+  },
+  (t) => [
+    index("gastos_cocina").on(t.cocinaId),
+    index("gastos_fecha").on(t.fecha),
+    check("gastos_total_positivo", sql`${t.totalCentavos} > 0`),
+    anulacionCoherente("gastos_anulacion_coherente", t),
+  ],
+);
+
+export const gastoItems = pgTable(
+  "gasto_items",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    gastoId: uuid()
+      .notNull()
+      .references(() => gastos.id),
+    descripcion: text().notNull(),
+    /** Texto libre: "15 kg", "6 unidades". No es plata. */
+    cantidad: text(),
+    categoria: categoriaGasto().notNull(),
+    subtotalCentavos: bigint({ mode: "bigint" }).notNull(),
+  },
+  (t) => [index("gasto_items_gasto").on(t.gastoId), check("gasto_items_subtotal_positivo", sql`${t.subtotalCentavos} > 0`)],
+);
+
+// ---------------------------------------------------------------------------
+// Archivos (fotos de tickets). Se guardan comprimidos en la base: son pocos y chicos.
+// ---------------------------------------------------------------------------
+
+const bytes = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
+
+export const archivos = pgTable("archivos", {
+  id: uuid().primaryKey().defaultRandom(),
+  tipoMime: text().notNull(),
+  tamanoBytes: bigint({ mode: "number" }).notNull(),
+  sha256: text().notNull(),
+  contenido: bytes().notNull(),
+  creadoEn: momento().notNull().defaultNow(),
+});
+
+// ---------------------------------------------------------------------------
+// Tickets: una foto que la IA lee y convierte en gasto.
+// ---------------------------------------------------------------------------
+
+export const estadoTicket = pgEnum("estado_ticket", [
+  /** La IA lo leyó, los números cerraron y ya es un gasto. */
+  "REGISTRADO",
+  /** La IA no pudo leerlo bien o los números no cierran: lo tiene que mirar un admin. */
+  "REVISAR",
+  /** Un admin decidió que no corresponde (foto repetida, no es un ticket...). */
+  "DESCARTADO",
+]);
+
+export const tickets = pgTable(
+  "tickets",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    cocinaId: uuid().references(() => cocinas.id),
+    archivoId: uuid()
+      .notNull()
+      .references(() => archivos.id),
+    estado: estadoTicket().notNull(),
+    /** Lo que leyó la IA, tal cual. */
+    lecturaIa: jsonb(),
+    /** Por qué quedó para revisar. */
+    motivoRevision: text(),
+    gastoId: uuid().references(() => gastos.id),
+    subidoPorAdminId: uuid().references(() => admins.id),
+    resueltoPorAdminId: uuid().references(() => admins.id),
+    ...tiempos,
+  },
+  (t) => [
+    index("tickets_cocina").on(t.cocinaId),
+    index("tickets_estado").on(t.estado),
+    check("tickets_registrado_con_gasto", sql`(${t.estado} = 'REGISTRADO') = (${t.gastoId} IS NOT NULL)`),
   ],
 );

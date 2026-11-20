@@ -1,18 +1,18 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { DecoracionRugby, DibujoCaja, DibujoFiestas, DibujoPagos, DibujoStock } from "../ilustraciones";
+import { DecoracionRugby, DibujoCaja, DibujoFiestas, DibujoPagos, DibujoSabados, DibujoStock } from "../ilustraciones";
 import { useAdmin, useSesion } from "../sesion";
 
 const fechaDeHoy = () =>
   new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "long" }).format(new Date());
 
-function TarjetaSeccion(props: { a: string; titulo: string; desc: string; chip: string; dibujo: ReactNode }) {
+function TarjetaSeccion(props: { a: string; titulo: string; desc: string; chip: string; chipColor?: string; dibujo: ReactNode }) {
   return (
     <Link to={props.a} className="seccion">
       <span className="textos">
         <strong>{props.titulo}</strong>
         <span className="desc">{props.desc}</span>
-        <span className="chip gris">{props.chip}</span>
+        <span className={`chip ${props.chipColor ?? "gris"}`}>{props.chip}</span>
       </span>
       {props.dibujo}
     </Link>
@@ -51,6 +51,7 @@ export function Inicio() {
       </header>
 
       <main className="contenido">
+        <TarjetaSeccion a="/sabados" titulo="Sábados" desc="Invitados del tercer tiempo y la cocina de la camada" chip="Listo para usar" chipColor="azul" dibujo={<DibujoSabados />} />
         <TarjetaSeccion a="/pagos" titulo="Pagos" desc="Cuotas, comprobantes y efectivo" chip="En construcción" dibujo={<DibujoPagos />} />
         <TarjetaSeccion a="/fiestas" titulo="Fiestas" desc="Entradas para gente de afuera y control en la puerta" chip="En construcción" dibujo={<DibujoFiestas />} />
         <TarjetaSeccion a="/caja" titulo="Caja" desc="Todo lo que entra y sale: saldo, gastos y efectivo" chip="En construcción" dibujo={<DibujoCaja />} />

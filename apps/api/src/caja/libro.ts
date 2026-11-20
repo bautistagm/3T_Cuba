@@ -18,7 +18,7 @@ export class ErrorCaja extends Error {
   }
 }
 
-export type OrigenAsiento = "PAGO" | "GASTO" | "RENDICION" | "AJUSTE";
+export type OrigenAsiento = "PAGO" | "GASTO" | "RENDICION" | "AJUSTE" | "ADELANTO";
 
 export interface LineaAsiento {
   cuentaCodigo: string;

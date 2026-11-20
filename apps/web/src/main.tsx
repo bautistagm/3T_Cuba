@@ -8,10 +8,13 @@ import "@fontsource/inter/700.css";
 import "./estilos.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router";
 import { Instalacion, Login } from "./pantallas/Acceso";
 import { Ajustes } from "./pantallas/Ajustes";
+import { PantallaCocina } from "./pantallas/Cocina";
 import { Inicio } from "./pantallas/Inicio";
+import { PaginaDelResponsable } from "./pantallas/Responsable";
+import { PantallaSabado } from "./pantallas/Sabado";
 import { SeccionEnConstruccion } from "./pantallas/Seccion";
 import { ProveedorSesion, useSesion } from "./sesion";
 
@@ -42,6 +45,9 @@ function App() {
       return (
         <Routes>
           <Route path="/" element={<Inicio />} />
+          <Route path="/sabados" element={<PantallaSabado />} />
+          <Route path="/sabados/:id" element={<PantallaSabado />} />
+          <Route path="/cocinas/:id" element={<PantallaCocina />} />
           <Route path="/pagos" element={<SeccionEnConstruccion titulo="Pagos" cuando="Se construye con los jugadores de prueba y queda lista para cargar a los reales en febrero." />} />
           <Route path="/fiestas" element={<SeccionEnConstruccion titulo="Fiestas" cuando="Llega después de Sábados, Caja y la verificación de transferencias." />} />
           <Route path="/caja" element={<SeccionEnConstruccion titulo="Caja" cuando="Llega después de Sábados." />} />
@@ -53,14 +59,29 @@ function App() {
   }
 }
 
+/** Las páginas públicas (link del responsable) no necesitan sesión. */
+function Raiz() {
+  const { pathname } = useLocation();
+  if (pathname.startsWith("/cocina/")) {
+    return (
+      <Routes>
+        <Route path="/cocina/:token" element={<PaginaDelResponsable />} />
+      </Routes>
+    );
+  }
+  return (
+    <ProveedorSesion>
+      <App />
+    </ProveedorSesion>
+  );
+}
+
 const raiz = document.getElementById("raiz");
 if (!raiz) throw new Error("Falta el elemento #raiz");
 createRoot(raiz).render(
   <StrictMode>
     <BrowserRouter>
-      <ProveedorSesion>
-        <App />
-      </ProveedorSesion>
+      <Raiz />
     </BrowserRouter>
   </StrictMode>,
 );
