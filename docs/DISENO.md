@@ -44,13 +44,15 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 - Al cerrar la fecha se rinde: si sobra plata, la camada la devuelve; si se pasaron, queda registrado.
 
 **Fiestas**
-- Venta de entradas a gente de afuera, por tandas con precio y cupo. Entradas nominales (nombre + DNI) con un código único.
-- **Tipos de entrada con precios distintos** (por ejemplo, mujer y hombre), dentro de cada tanda. Un solo link de venta: el comprador elige el tipo, y la entrada sale a su nombre y DNI con el tipo bien visible.
-- **El tipo se controla en la puerta con el DNI.** La página de compra lo avisa antes de pagar. Si el DNI no coincide con el tipo comprado, en la puerta se cobra la diferencia (queda registrada en la caja de la fiesta) o no se deja pasar. Cada entrada es nominal: no se transfiere.
-- **Entrada con código QR**: al acreditarse el pago, el comprador recibe por WhatsApp su entrada con un QR (un código aleatorio firmado, imposible de adivinar).
+- **No hay fiestas por defecto.** El dueño crea cada fiesta desde la sección Fiestas con: nombre o motivo, fecha y hora, lugar, cupo total, tipos de entrada (por defecto "Mujer" y "Hombre") y, para cada tipo, sus tandas con precio, cupo y fecha de fin. Mientras no tenga ventas se puede editar; después, solo el dueño puede cambiar precios de tandas futuras.
+- **Un link de venta por tipo de entrada** (uno para mujeres, otro para hombres). Cada link vende solo ese tipo, así se puede difundir cada uno por separado.
+- Entradas **nominales**: nombre, DNI, **email (obligatorio)** y teléfono (opcional). No se transfieren.
+- **El tipo se controla en la puerta con el DNI.** La página de compra lo avisa antes de pagar. Si el DNI no coincide con el tipo comprado, en la puerta se cobra la diferencia (queda registrada en la caja de la fiesta) o no se deja pasar.
+- **La entrada con su QR llega por email**, desde una casilla dedicada del plantel (a crear; sus datos se cargan como secretos del servidor). El QR es un código aleatorio firmado, imposible de adivinar. Si no le llegó, se puede reenviar desde la app.
+- **Listas separadas por tipo**: la app muestra los compradores en dos listas (Mujeres / Hombres), con totales de cada una, y se pueden exportar a una planilla con una hoja por tipo.
 - **Puerta desde el celular**: cualquier admin escanea el QR con la cámara desde la app. La pantalla muestra en grande nombre, DNI y tipo, o un aviso rojo si la entrada ya se usó (con la hora y quién la marcó), está anulada o no existe. Cada QR entra una sola vez: si alguien comparte la captura, entra solo el primero.
 - También se puede buscar por nombre o DNI. La lista de la fiesta se descarga al celular antes de abrir la puerta, para que funcione aunque haya mala señal; al volver la conexión se sincroniza.
-- Los jugadores figuran en la lista de puerta sin pagar.
+- Los jugadores figuran en la lista de puerta sin pagar (la fiesta va incluida en su cuota).
 - Cada fiesta tiene su resultado: entradas menos gastos.
 
 **Caja**
@@ -94,7 +96,7 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 | Tests | Vitest + base de datos real en Docker para integración | Los flujos de plata se prueban contra una base real |
 | CI | GitHub Actions | Cada cambio corre tests y chequeos antes de integrarse |
 | Pagos | API de Mercado Pago (Checkout Pro, Suscripciones, Webhooks) | Ya conocida por los jugadores |
-| Mensajes | WhatsApp: al principio botón con mensaje armado; después API oficial (Cloud API) | Arranca rápido, se automatiza cuando esté aprobado por Meta |
+| Mensajes | WhatsApp para jugadores (al principio botón con mensaje armado; después API oficial). Email para las entradas de fiesta, desde la casilla del plantel | Cada canal donde la gente lo espera |
 | IA | API de Claude para leer tickets/comprobantes y responder preguntas de caja | Salida estructurada y verificable |
 | Hosting | A definir en la Etapa 2 (servicio administrado con Postgres y backups) | Costo estimado bajo |
 
@@ -113,7 +115,7 @@ Convenciones: `id` UUID; `*_centavos` BIGINT; `creado_en` / `actualizado_en` en 
 - **imputaciones**: qué cargos cancela cada pago (pago, cargo, monto). Permite pagar dos meses juntos.
 - **suscripciones_debito**: jugador, id de suscripción de Mercado Pago, estado, monto actual.
 - **comprobantes**: archivo, datos leídos por la IA, nivel de coincidencia, jugador sugerido, estado (`PENDIENTE_REVISION` | `CONFIRMADO` | `RECHAZADO`), quién lo revisó.
-- **notificaciones**: destinatario, tipo (aviso del día 1, recordatorio, confirmación, entrada), canal, estado, error, fecha de envío.
+- **notificaciones**: destinatario, tipo (aviso del día 1, recordatorio, confirmación, entrada), canal (`WHATSAPP` | `EMAIL`), estado, error, fecha de envío.
 
 ### Sábados y cocina
 - **sabados**: fecha, es_local, notas.
@@ -124,10 +126,10 @@ Convenciones: `id` UUID; `*_centavos` BIGINT; `creado_en` / `actualizado_en` en 
 - **gasto_items**: el detalle del ticket, producto por producto: descripción, cantidad, unidad, precio unitario, subtotal. En 2027 se vincula a un producto del stock.
 
 ### Fiestas
-- **fiestas**: nombre, fecha y hora, lugar, cupo, estado.
-- **tandas**: fiesta, nombre, precio_centavos, cupo, desde, hasta, orden.
-- **tipos_entrada**: tanda, nombre (ej. "Mujer", "Hombre"), precio_centavos.
-- **entradas**: fiesta, tanda, tipo de entrada, origen (`EXTERNA` | `JUGADOR`), nombre, DNI, teléfono, código único, pago, estado (`VALIDA` | `USADA` | `ANULADA`), hora de ingreso y quién la marcó, diferencia cobrada en puerta (si hubo).
+- **fiestas**: nombre o motivo, fecha y hora, lugar, cupo, estado (`BORRADOR` | `A_LA_VENTA` | `CERRADA` | `FINALIZADA`), creada por.
+- **tipos_entrada**: fiesta, nombre (ej. "Mujer", "Hombre"), token del link de venta propio.
+- **tandas**: tipo de entrada, nombre, precio_centavos, cupo, desde, hasta, orden.
+- **entradas**: fiesta, tanda, tipo de entrada, origen (`EXTERNA` | `JUGADOR`), nombre, DNI, email, teléfono, código único, pago, estado (`VALIDA` | `USADA` | `ANULADA`), hora de ingreso y quién la marcó, diferencia cobrada en puerta (si hubo).
 
 ### Caja y control
 - **movimientos_caja**: el libro único. fecha, tipo (`INGRESO` | `EGRESO` | `TRANSFERENCIA_INTERNA`), cuenta (`CUENTA` | `EFECTIVO:<admin>`), monto_centavos con signo, referencia al pago, gasto o rendición que lo originó.
@@ -164,4 +166,5 @@ Cada etapa termina con: tests pasando, revisión del dueño y prueba en un entor
 - Hosting (Etapa 2).
 - Monto de cada cuota, precio de invitados, alias de la cuenta (antes de usar plata real).
 - Número de WhatsApp para los mensajes y trámite con Meta (Etapa 8).
+- Casilla de email del plantel para enviar las entradas, y servicio de envío (Etapa 12).
 - Consulta con un contador sobre Ingresos Brutos de la cuenta personal (antes de usar plata real).
