@@ -44,11 +44,14 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 - Al cerrar la fecha se rinde: si sobra plata, la camada la devuelve; si se pasaron, queda registrado.
 
 **Fiestas**
-- **No hay fiestas por defecto.** El dueño crea cada fiesta desde la sección Fiestas con: nombre o motivo, fecha y hora, lugar, cupo total, tipos de entrada (por defecto "Mujer" y "Hombre") y, para cada tipo, sus tandas con precio, cupo y fecha de fin. Mientras no tenga ventas se puede editar; después, solo el dueño puede cambiar precios de tandas futuras.
+- **No hay fiestas por defecto.** El dueño crea cada fiesta desde la sección Fiestas.
+  - **Obligatorio:** nombre o motivo, fecha y hora, y el precio de cada tipo de entrada (por defecto "Mujer" y "Hombre").
+  - **Opcional:** lugar, cupo total, cupo por tipo y tandas (cada tanda con su precio, cupo y fecha de fin). Sin tandas, cada tipo se vende a un precio único; sin cupo, no hay límite de entradas.
+  - Mientras no tenga ventas se puede editar libremente; después, solo el dueño puede cambiar precios futuros.
 - **Un link de venta por tipo de entrada** (uno para mujeres, otro para hombres). Cada link vende solo ese tipo, así se puede difundir cada uno por separado.
 - Entradas **nominales**: nombre, DNI, **email (obligatorio)** y teléfono (opcional). No se transfieren.
 - **El tipo se controla en la puerta con el DNI.** La página de compra lo avisa antes de pagar. Si el DNI no coincide con el tipo comprado, en la puerta se cobra la diferencia (queda registrada en la caja de la fiesta) o no se deja pasar.
-- **La entrada con su QR llega por email**, desde una casilla dedicada del plantel (a crear; sus datos se cargan como secretos del servidor). El QR es un código aleatorio firmado, imposible de adivinar. Si no le llegó, se puede reenviar desde la app.
+- **La entrada con su QR llega por email**, desde la casilla del plantel **plantelcuba@gmail.com**. La clave de envío (contraseña de aplicación de Google) se carga solo como secreto del servidor. El QR es un código aleatorio firmado, imposible de adivinar. Si no le llegó, se puede reenviar desde la app.
 - **Listas separadas por tipo**: la app muestra los compradores en dos listas (Mujeres / Hombres), con totales de cada una, y se pueden exportar a una planilla con una hoja por tipo.
 - **Puerta desde el celular**: cualquier admin escanea el QR con la cámara desde la app. La pantalla muestra en grande nombre, DNI y tipo, o un aviso rojo si la entrada ya se usó (con la hora y quién la marcó), está anulada o no existe. Cada QR entra una sola vez: si alguien comparte la captura, entra solo el primero.
 - También se puede buscar por nombre o DNI. La lista de la fiesta se descarga al celular antes de abrir la puerta, para que funcione aunque haya mala señal; al volver la conexión se sincroniza.
@@ -126,9 +129,9 @@ Convenciones: `id` UUID; `*_centavos` BIGINT; `creado_en` / `actualizado_en` en 
 - **gasto_items**: el detalle del ticket, producto por producto: descripción, cantidad, unidad, precio unitario, subtotal. En 2027 se vincula a un producto del stock.
 
 ### Fiestas
-- **fiestas**: nombre o motivo, fecha y hora, lugar, cupo, estado (`BORRADOR` | `A_LA_VENTA` | `CERRADA` | `FINALIZADA`), creada por.
-- **tipos_entrada**: fiesta, nombre (ej. "Mujer", "Hombre"), token del link de venta propio.
-- **tandas**: tipo de entrada, nombre, precio_centavos, cupo, desde, hasta, orden.
+- **fiestas**: nombre o motivo, fecha y hora, lugar (opcional), cupo (opcional), estado (`BORRADOR` | `A_LA_VENTA` | `CERRADA` | `FINALIZADA`), creada por.
+- **tipos_entrada**: fiesta, nombre (ej. "Mujer", "Hombre"), precio_centavos (precio único si no hay tandas), cupo (opcional), token del link de venta propio.
+- **tandas** (opcionales): tipo de entrada, nombre, precio_centavos, cupo (opcional), desde, hasta, orden. Si un tipo tiene tandas, manda el precio de la tanda vigente.
 - **entradas**: fiesta, tanda, tipo de entrada, origen (`EXTERNA` | `JUGADOR`), nombre, DNI, email, teléfono, código único, pago, estado (`VALIDA` | `USADA` | `ANULADA`), hora de ingreso y quién la marcó, diferencia cobrada en puerta (si hubo).
 
 ### Caja y control
@@ -166,5 +169,5 @@ Cada etapa termina con: tests pasando, revisión del dueño y prueba en un entor
 - Hosting (Etapa 2).
 - Monto de cada cuota, precio de invitados, alias de la cuenta (antes de usar plata real).
 - Número de WhatsApp para los mensajes y trámite con Meta (Etapa 8).
-- Casilla de email del plantel para enviar las entradas, y servicio de envío (Etapa 12).
+- Servicio de envío de las entradas desde plantelcuba@gmail.com (Gmail con contraseña de aplicación u otro servicio, según el volumen) (Etapa 12).
 - Consulta con un contador sobre Ingresos Brutos de la cuenta personal (antes de usar plata real).
