@@ -19,6 +19,13 @@ export const codigoCuentaCocina = (cocinaId: string) => `COCINA:${cocinaId}`;
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 const nuevoToken = () => randomBytes(24).toString("base64url");
 
+/** La cocina sin el hash del link (para mostrar o auditar). */
+function sinToken<T extends { tokenHash: string }>(cocina: T): Omit<T, "tokenHash"> {
+  const copia: Partial<T> = { ...cocina };
+  delete copia.tokenHash;
+  return copia as Omit<T, "tokenHash">;
+}
+
 type Medio = "TRANSFERENCIA" | "EFECTIVO";
 type TipoMovimiento = (typeof movimientosCocina.$inferSelect)["tipo"];
 
@@ -73,11 +80,10 @@ export async function crearCocina(db: BaseDeDatos, actor: ActorAdmin, datos: Dat
       nombre: `En manos de la camada ${nueva.camada} (sábado ${sabado.fecha})`,
       tipo: "ACTIVO",
     });
-    const { tokenHash: _oculto, ...publica } = nueva;
-    await registrarAuditoria(tx, actor, { accion: "COCINA_CREADA", entidad: "cocina", entidadId: nueva.id, despues: publica });
+    await registrarAuditoria(tx, actor, { accion: "COCINA_CREADA", entidad: "cocina", entidadId: nueva.id, despues: sinToken(nueva) });
     return nueva;
   });
-  return { cocina, token };
+  return { cocina: sinToken(cocina), token };
 }
 
 /** Genera un link nuevo para el responsable; el anterior deja de funcionar. */
@@ -203,9 +209,8 @@ export async function resumenCocina(db: Ejecutor, cocinaId: string) {
     .from(gastos)
     .where(and(eq(gastos.cocinaId, cocinaId), eq(gastos.estado, "CONFIRMADO")));
 
-  const { tokenHash: _oculto, ...datos } = cocina;
   return {
-    cocina: datos,
+    cocina: sinToken(cocina),
     adelantadoCentavos: total("ADELANTO"),
     gastadoCentavos: BigInt(gastado?.total ?? "0"),
     devueltoCentavos: total("DEVOLUCION"),
