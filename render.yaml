@@ -1,0 +1,25 @@
+# Configuración de Render (plan gratis). Render la lee sola al crear el "Blueprint".
+# Costo: USD 0. Ver docs/PUBLICAR.md.
+services:
+  - type: web
+    name: plantel-3t
+    runtime: node
+    plan: free
+    region: virginia
+    branch: main
+    buildCommand: npx -y pnpm@10.28.0 install --frozen-lockfile --prod=false && npx -y pnpm@10.28.0 run build:produccion
+    startCommand: node apps/api/dist/servidor.js
+    healthCheckPath: /vivo
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: CARPETA_WEB
+        value: /opt/render/project/src/apps/web/dist
+      # Estos dos los carga el dueño en el panel de Render (nunca van al repositorio):
+      - key: DATABASE_URL
+        sync: false
+      - key: CODIGO_INSTALACION
+        sync: false
