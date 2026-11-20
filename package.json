@@ -8,9 +8,9 @@
   },
   "scripts": {
     "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm --filter @3t/shared build && pnpm -r typecheck",
     "lint": "eslint .",
-    "test": "pnpm -r test",
+    "test": "pnpm --filter @3t/shared build && pnpm -r test",
     "check": "pnpm lint && pnpm typecheck && pnpm test"
   },
   "devDependencies": {
