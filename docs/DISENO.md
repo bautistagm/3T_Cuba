@@ -11,8 +11,8 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 
 | Actor | Cómo entra | Qué puede hacer |
 |---|---|---|
-| Dueño (Bautista) | App instalada en el celular (PWA), con login | Todo, incluida la gestión de administradores |
-| Administradores (hasta 5) | App instalada, con login | Operar: registrar pagos, revisar comprobantes, cargar gastos, cobrar invitados, puerta de fiesta. No pueden anular pagos ni cambiar montos de cuota |
+| Dueño (Bautista) | App instalada en el celular (PWA), con login | **Todo.** Es el único que puede anular, dar de baja, eliminar, cambiar montos y gestionar administradores |
+| Administradores (hasta 5) | App instalada, con login | Operar: registrar pagos, revisar comprobantes, cargar gastos, cobrar invitados, puerta de fiesta. Solo registran: no pueden anular, eliminar, dar de baja ni cambiar montos |
 | Jugadores (~150) | Solo links personales por WhatsApp, sin login ni instalación | Ver su cuota, pagar, adherirse al débito, subir comprobante |
 | Responsable de la camada que cocina | Link por WhatsApp válido para esa fecha | Subir fotos de tickets |
 | Gente de afuera (fiestas) | Link público de venta | Comprar entradas |
@@ -45,7 +45,12 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 
 **Fiestas**
 - Venta de entradas a gente de afuera, por tandas con precio y cupo. Entradas nominales (nombre + DNI) con un código único.
-- En la puerta se valida por código o por nombre/DNI. Los jugadores figuran en la lista de puerta sin pagar.
+- **Tipos de entrada con precios distintos** (por ejemplo, mujer y hombre), dentro de cada tanda. Un solo link de venta: el comprador elige el tipo, y la entrada sale a su nombre y DNI con el tipo bien visible.
+- **El tipo se controla en la puerta con el DNI.** La página de compra lo avisa antes de pagar. Si el DNI no coincide con el tipo comprado, en la puerta se cobra la diferencia (queda registrada en la caja de la fiesta) o no se deja pasar. Cada entrada es nominal: no se transfiere.
+- **Entrada con código QR**: al acreditarse el pago, el comprador recibe por WhatsApp su entrada con un QR (un código aleatorio firmado, imposible de adivinar).
+- **Puerta desde el celular**: cualquier admin escanea el QR con la cámara desde la app. La pantalla muestra en grande nombre, DNI y tipo, o un aviso rojo si la entrada ya se usó (con la hora y quién la marcó), está anulada o no existe. Cada QR entra una sola vez: si alguien comparte la captura, entra solo el primero.
+- También se puede buscar por nombre o DNI. La lista de la fiesta se descarga al celular antes de abrir la puerta, para que funcione aunque haya mala señal; al volver la conexión se sincroniza.
+- Los jugadores figuran en la lista de puerta sin pagar.
 - Cada fiesta tiene su resultado: entradas menos gastos.
 
 **Caja**
@@ -56,7 +61,8 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 ## 3. Reglas de seguridad para la plata (no negociables)
 
 1. **Montos en centavos, como enteros** (`BIGINT`). Nunca decimales ni floats.
-2. **Nada se borra.** Pagos, gastos y entradas se **anulan** con motivo, autor y fecha. Solo el dueño anula.
+2. **La plata nunca se borra.** Pagos, gastos y entradas se **anulan** con motivo, autor y fecha. **Solo el dueño anula.**
+   - **Jugadores**: el dueño puede **dar de baja** (deja de generar cuotas y sale de las listas, pero se puede reactivar) o **eliminar**. Si el jugador nunca pagó nada, se borra por completo. Si tiene pagos, se borran sus datos personales (nombre, DNI, teléfono, email) y sus pagos quedan como "Jugador eliminado", para que la caja siga cerrando. Eliminar pide escribir el nombre del jugador para confirmar y queda en la auditoría.
 3. **Libro de caja de doble partida simplificado**: cada evento de plata genera asientos en `movimientos_caja`. El saldo se calcula sumando asientos; nunca se guarda un saldo "a mano".
 4. **Auditoría**: cada cambio de datos guarda quién, cuándo, qué había antes y qué hay después.
 5. **Webhooks de Mercado Pago**: se verifica la firma, se guarda el evento y se procesa **una sola vez** (idempotencia por ID de evento). El estado del pago siempre se vuelve a consultar a la API de Mercado Pago; nunca se confía solo en el aviso.
@@ -98,7 +104,7 @@ Convenciones: `id` UUID; `*_centavos` BIGINT; `creado_en` / `actualizado_en` en 
 
 ### Personas y acceso
 - **admins**: nombre, email, teléfono, rol (`DUENO` | `ADMIN`), activo.
-- **jugadores**: nombre, apellido, DNI (único), teléfono WhatsApp, email, camada, activo, fecha de alta, fecha de baja, token del link personal.
+- **jugadores**: nombre, apellido, DNI (único), teléfono WhatsApp, email, camada, estado (`ACTIVO` | `BAJA` | `ELIMINADO`), fecha de alta, fecha de baja, token del link personal.
 
 ### Cuotas y pagos
 - **periodos_cuota**: año, mes (únicos juntos), monto_centavos, es_mes_fiesta, nota, estado (`ABIERTO` | `CERRADO`).
@@ -120,7 +126,8 @@ Convenciones: `id` UUID; `*_centavos` BIGINT; `creado_en` / `actualizado_en` en 
 ### Fiestas
 - **fiestas**: nombre, fecha y hora, lugar, cupo, estado.
 - **tandas**: fiesta, nombre, precio_centavos, cupo, desde, hasta, orden.
-- **entradas**: fiesta, tanda, tipo (`EXTERNA` | `JUGADOR`), nombre, DNI, teléfono, código único, pago, estado (`VALIDA` | `USADA` | `ANULADA`), hora de ingreso y quién la marcó.
+- **tipos_entrada**: tanda, nombre (ej. "Mujer", "Hombre"), precio_centavos.
+- **entradas**: fiesta, tanda, tipo de entrada, origen (`EXTERNA` | `JUGADOR`), nombre, DNI, teléfono, código único, pago, estado (`VALIDA` | `USADA` | `ANULADA`), hora de ingreso y quién la marcó, diferencia cobrada en puerta (si hubo).
 
 ### Caja y control
 - **movimientos_caja**: el libro único. fecha, tipo (`INGRESO` | `EGRESO` | `TRANSFERENCIA_INTERNA`), cuenta (`CUENTA` | `EFECTIVO:<admin>`), monto_centavos con signo, referencia al pago, gasto o rendición que lo originó.
