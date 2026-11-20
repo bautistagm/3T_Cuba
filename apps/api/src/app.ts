@@ -1,10 +1,20 @@
+import { createHash, timingSafeEqual } from "node:crypto";
+import { existsSync } from "node:fs";
 import cookie from "@fastify/cookie";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
+import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import { eq, sql } from "drizzle-orm";
 import { z, ZodError } from "zod";
-import { ErrorAdmins, crearAdmin, datosNuevoAdminSchema, desactivarAdmin, listarAdmins } from "./admins/admins.js";
+import {
+  ErrorAdmins,
+  crearAdmin,
+  crearDueno,
+  datosNuevoAdminSchema,
+  desactivarAdmin,
+  listarAdmins,
+} from "./admins/admins.js";
 import { registrarAuditoria } from "./auditoria/auditoria.js";
 import { obtenerHashDeRelleno, verificarContrasena } from "./auth/contrasenas.js";
 import { buscarSesion, crearSesion, revocarSesion, type AdminEnSesion } from "./auth/sesiones.js";
@@ -47,10 +57,21 @@ export function requiereDueno(peticion: FastifyRequest): AdminEnSesion {
   return admin;
 }
 
+/** Compara dos textos sin que el tiempo de respuesta revele cuántos caracteres coinciden. */
+function textosIguales(a: string, b: string): boolean {
+  const ha = createHash("sha256").update(a).digest();
+  const hb = createHash("sha256").update(b).digest();
+  return timingSafeEqual(ha, hb);
+}
+
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
   contrasena: z.string().min(1).max(200),
 });
+
+const instalacionSchema = datosNuevoAdminSchema.extend({ codigo: z.string().min(1).max(200) });
+
+type AdminPublico = { id: string; nombre: string; email: string; rol: "DUENO" | "ADMIN" };
 
 export async function construirApp(opciones: { db: BaseDeDatos; config: Config }): Promise<FastifyInstance> {
   const { db, config } = opciones;
@@ -62,17 +83,20 @@ export async function construirApp(opciones: { db: BaseDeDatos; config: Config }
     bodyLimit: 1024 * 1024,
   });
 
-  await app.register(helmet);
+  await app.register(helmet, {
+    contentSecurityPolicy: {
+      directives: {
+        // El escudo y las fotos se muestran desde la misma app; el service worker de la PWA también.
+        "img-src": ["'self'", "data:", "blob:"],
+        "worker-src": ["'self'"],
+        "manifest-src": ["'self'"],
+      },
+    },
+  });
   await app.register(cookie);
   await app.register(rateLimit, { global: false });
 
   app.decorateRequest("admin", null);
-
-  // Identifica al admin en cada pedido a partir de la cookie de sesión.
-  app.addHook("onRequest", async (peticion) => {
-    const token = peticion.cookies[COOKIE_SESION];
-    peticion.admin = token ? await buscarSesion(db, token) : null;
-  });
 
   app.setErrorHandler((error, _peticion, respuesta) => {
     if (error instanceof ErrorHttp) return responderError(respuesta, error.estado, error.codigo, error.message);
@@ -84,113 +108,182 @@ export async function construirApp(opciones: { db: BaseDeDatos; config: Config }
       return responderError(respuesta, estado, error.codigo, error.message);
     }
     if (error instanceof ErrorCaja) return responderError(respuesta, 422, "ERROR_CAJA", error.message);
-    const conEstado = error as { statusCode?: number; message?: string };
+    const conEstado = error as { statusCode?: number };
     if (conEstado.statusCode === 429) {
       return responderError(respuesta, 429, "DEMASIADOS_INTENTOS", "Demasiados intentos. Esperá un minuto.");
+    }
+    if (conEstado.statusCode === 400) {
+      return responderError(respuesta, 400, "DATOS_INVALIDOS", "Los datos enviados no son válidos.");
     }
     app.log.error(error);
     return responderError(respuesta, 500, "ERROR_INTERNO", "Algo salió mal. Probá de nuevo en un rato.");
   });
 
-  // -------------------------------------------------------------------------
-  // Salud: para que el hosting sepa si la app y la base están andando.
-  // -------------------------------------------------------------------------
-  app.get("/salud", async () => {
-    await db.execute(sql`select 1`);
-    return { ok: true };
-  });
+  // Para el aviso que mantiene despierta la app. No toca la base, así no gasta sus horas gratis.
+  app.get("/vivo", async () => ({ ok: true }));
 
-  // -------------------------------------------------------------------------
-  // Login / logout
-  // -------------------------------------------------------------------------
-  app.post(
-    "/auth/login",
-    { config: { rateLimit: { max: 5, timeWindow: "1 minute" } } },
-    async (peticion, respuesta) => {
-      const datos = loginSchema.parse(peticion.body);
-      const [admin] = await db
-        .select()
-        .from(admins)
-        .where(sql`lower(${admins.email}) = ${datos.email}`)
-        .limit(1);
+  async function iniciarSesion(peticion: FastifyRequest, respuesta: FastifyReply, admin: AdminPublico) {
+    const sesion = await crearSesion(db, {
+      adminId: admin.id,
+      dias: config.SESION_DIAS,
+      ip: peticion.ip,
+      navegador: peticion.headers["user-agent"],
+    });
+    await registrarAuditoria(db, { tipo: "ADMIN", adminId: admin.id, ip: peticion.ip }, {
+      accion: "LOGIN",
+      entidad: "sesion",
+      entidadId: sesion.sesionId,
+    });
+    respuesta.setCookie(COOKIE_SESION, sesion.token, {
+      httpOnly: true,
+      secure: enProduccion,
+      sameSite: "strict",
+      path: "/",
+      expires: sesion.expiraEn,
+    });
+    return { admin: { id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol } };
+  }
 
-      // Si el email no existe igual verificamos contra un hash de relleno, para tardar lo mismo.
-      const contrasenaOk = await verificarContrasena(admin?.hashContrasena ?? (await obtenerHashDeRelleno()), datos.contrasena);
-      if (!admin || !admin.activo || !contrasenaOk) {
-        await registrarAuditoria(db, { tipo: "PUBLICO", ip: peticion.ip }, {
-          accion: "LOGIN_FALLIDO",
-          entidad: "admin",
-          entidadId: admin?.id ?? "desconocido",
-          despues: { email: datos.email },
+  // ---------------------------------------------------------------------------
+  // Todo lo de la API vive bajo /api
+  // ---------------------------------------------------------------------------
+  await app.register(
+    async (api) => {
+      // Identifica al admin en cada pedido a partir de la cookie de sesión.
+      api.addHook("onRequest", async (peticion) => {
+        const token = peticion.cookies[COOKIE_SESION];
+        peticion.admin = token ? await buscarSesion(db, token) : null;
+      });
+
+      api.get("/salud", async () => {
+        await db.execute(sql`select 1`);
+        return { ok: true };
+      });
+
+      // -----------------------------------------------------------------------
+      // Instalación: crear la cuenta del dueño la primera vez, con el código de instalación.
+      // -----------------------------------------------------------------------
+      api.get("/instalacion", async () => {
+        const [dueno] = await db.select({ id: admins.id }).from(admins).where(eq(admins.rol, "DUENO")).limit(1);
+        return { necesitaDueno: !dueno, habilitada: Boolean(config.CODIGO_INSTALACION) };
+      });
+
+      api.post(
+        "/instalacion",
+        { config: { rateLimit: { max: 5, timeWindow: "1 minute" } } },
+        async (peticion, respuesta) => {
+          const { codigo, ...datos } = instalacionSchema.parse(peticion.body);
+          if (!config.CODIGO_INSTALACION) {
+            throw new ErrorHttp(403, "INSTALACION_DESHABILITADA", "La instalación no está habilitada en el servidor.");
+          }
+          if (!textosIguales(codigo, config.CODIGO_INSTALACION)) {
+            await registrarAuditoria(db, { tipo: "PUBLICO", ip: peticion.ip }, {
+              accion: "INSTALACION_CODIGO_INCORRECTO",
+              entidad: "admin",
+              entidadId: "dueno",
+            });
+            throw new ErrorHttp(403, "CODIGO_INCORRECTO", "El código de instalación no es correcto.");
+          }
+          const dueno = await crearDueno(db, datos);
+          return respuesta.status(201).send(await iniciarSesion(peticion, respuesta, dueno));
+        },
+      );
+
+      // -----------------------------------------------------------------------
+      // Login / logout
+      // -----------------------------------------------------------------------
+      api.post(
+        "/auth/login",
+        { config: { rateLimit: { max: 5, timeWindow: "1 minute" } } },
+        async (peticion, respuesta) => {
+          const datos = loginSchema.parse(peticion.body);
+          const [admin] = await db
+            .select()
+            .from(admins)
+            .where(sql`lower(${admins.email}) = ${datos.email}`)
+            .limit(1);
+
+          // Si el email no existe igual verificamos contra un hash de relleno, para tardar lo mismo.
+          const contrasenaOk = await verificarContrasena(
+            admin?.hashContrasena ?? (await obtenerHashDeRelleno()),
+            datos.contrasena,
+          );
+          if (!admin || !admin.activo || !contrasenaOk) {
+            await registrarAuditoria(db, { tipo: "PUBLICO", ip: peticion.ip }, {
+              accion: "LOGIN_FALLIDO",
+              entidad: "admin",
+              entidadId: admin?.id ?? "desconocido",
+              despues: { email: datos.email },
+            });
+            throw new ErrorHttp(401, "CREDENCIALES_INVALIDAS", "Email o contraseña incorrectos.");
+          }
+          return iniciarSesion(peticion, respuesta, admin);
+        },
+      );
+
+      api.post("/auth/logout", async (peticion, respuesta) => {
+        const admin = requiereSesion(peticion);
+        await db.transaction(async (tx) => {
+          await revocarSesion(tx, admin.sesionId);
+          await registrarAuditoria(tx, { tipo: "ADMIN", adminId: admin.id, ip: peticion.ip }, {
+            accion: "LOGOUT",
+            entidad: "sesion",
+            entidadId: admin.sesionId,
+          });
         });
-        throw new ErrorHttp(401, "CREDENCIALES_INVALIDAS", "Email o contraseña incorrectos.");
-      }
-
-      const sesion = await crearSesion(db, {
-        adminId: admin.id,
-        dias: config.SESION_DIAS,
-        ip: peticion.ip,
-        navegador: peticion.headers["user-agent"],
-      });
-      await registrarAuditoria(db, { tipo: "ADMIN", adminId: admin.id, ip: peticion.ip }, {
-        accion: "LOGIN",
-        entidad: "sesion",
-        entidadId: sesion.sesionId,
+        respuesta.clearCookie(COOKIE_SESION, { path: "/" });
+        return { ok: true };
       });
 
-      respuesta.setCookie(COOKIE_SESION, sesion.token, {
-        httpOnly: true,
-        secure: enProduccion,
-        sameSite: "strict",
-        path: "/",
-        expires: sesion.expiraEn,
+      api.get("/auth/yo", async (peticion) => {
+        const admin = requiereSesion(peticion);
+        return { admin: { id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol } };
       });
-      return { admin: { id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol } };
+
+      // -----------------------------------------------------------------------
+      // Administradores (solo el dueño)
+      // -----------------------------------------------------------------------
+      api.get("/admins", async (peticion) => {
+        requiereDueno(peticion);
+        return { admins: await listarAdmins(db) };
+      });
+
+      api.post("/admins", async (peticion, respuesta) => {
+        const dueno = requiereDueno(peticion);
+        const datos = datosNuevoAdminSchema.parse(peticion.body);
+        const admin = await crearAdmin(db, { tipo: "ADMIN", adminId: dueno.id, rol: dueno.rol, ip: peticion.ip }, datos);
+        return respuesta.status(201).send({ admin });
+      });
+
+      api.post("/admins/:id/desactivar", async (peticion) => {
+        const dueno = requiereDueno(peticion);
+        const { id } = z.object({ id: z.string().uuid() }).parse(peticion.params);
+        const [objetivo] = await db.select({ id: admins.id }).from(admins).where(eq(admins.id, id)).limit(1);
+        if (!objetivo) throw new ErrorHttp(404, "NO_EXISTE", "El administrador no existe.");
+        const admin = await desactivarAdmin(db, { tipo: "ADMIN", adminId: dueno.id, rol: dueno.rol, ip: peticion.ip }, id);
+        return { admin };
+      });
+
+      api.setNotFoundHandler((_peticion, respuesta) =>
+        responderError(respuesta, 404, "NO_EXISTE", "Esa dirección de la API no existe."),
+      );
     },
+    { prefix: "/api" },
   );
 
-  app.post("/auth/logout", async (peticion, respuesta) => {
-    const admin = requiereSesion(peticion);
-    await db.transaction(async (tx) => {
-      await revocarSesion(tx, admin.sesionId);
-      await registrarAuditoria(tx, { tipo: "ADMIN", adminId: admin.id, ip: peticion.ip }, {
-        accion: "LOGOUT",
-        entidad: "sesion",
-        entidadId: admin.sesionId,
-      });
+  // ---------------------------------------------------------------------------
+  // Pantallas: la misma app sirve el frontend, así todo queda en una sola dirección
+  // (y la cookie de sesión funciona sin abrirle la puerta a otros sitios).
+  // ---------------------------------------------------------------------------
+  if (config.CARPETA_WEB && existsSync(config.CARPETA_WEB)) {
+    await app.register(fastifyStatic, { root: config.CARPETA_WEB, wildcard: false });
+    app.setNotFoundHandler((peticion, respuesta) => {
+      if (peticion.method === "GET" && !peticion.url.startsWith("/api/")) {
+        return respuesta.sendFile("index.html");
+      }
+      return responderError(respuesta, 404, "NO_EXISTE", "No existe.");
     });
-    respuesta.clearCookie(COOKIE_SESION, { path: "/" });
-    return { ok: true };
-  });
-
-  app.get("/auth/yo", async (peticion) => {
-    const admin = requiereSesion(peticion);
-    return { admin: { id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol } };
-  });
-
-  // -------------------------------------------------------------------------
-  // Administradores (solo el dueño)
-  // -------------------------------------------------------------------------
-  app.get("/admins", async (peticion) => {
-    requiereDueno(peticion);
-    return { admins: await listarAdmins(db) };
-  });
-
-  app.post("/admins", async (peticion, respuesta) => {
-    const dueno = requiereDueno(peticion);
-    const datos = datosNuevoAdminSchema.parse(peticion.body);
-    const admin = await crearAdmin(db, { tipo: "ADMIN", adminId: dueno.id, rol: dueno.rol, ip: peticion.ip }, datos);
-    return respuesta.status(201).send({ admin });
-  });
-
-  app.post("/admins/:id/desactivar", async (peticion) => {
-    const dueno = requiereDueno(peticion);
-    const { id } = z.object({ id: z.string().uuid() }).parse(peticion.params);
-    const [objetivo] = await db.select({ id: admins.id }).from(admins).where(eq(admins.id, id)).limit(1);
-    if (!objetivo) throw new ErrorHttp(404, "NO_EXISTE", "El administrador no existe.");
-    const admin = await desactivarAdmin(db, { tipo: "ADMIN", adminId: dueno.id, rol: dueno.rol, ip: peticion.ip }, id);
-    return { admin };
-  });
+  }
 
   return app;
 }
