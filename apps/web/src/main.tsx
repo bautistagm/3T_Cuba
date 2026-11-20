@@ -7,6 +7,7 @@ import "@fontsource/inter/600.css";
 import "@fontsource/inter/700.css";
 import "./estilos.css";
 import { StrictMode } from "react";
+import { registerSW } from "virtual:pwa-register";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router";
 import { Instalacion, Login } from "./pantallas/Acceso";
@@ -75,6 +76,20 @@ function Raiz() {
     </ProveedorSesion>
   );
 }
+
+// Cuando se publica una versión nueva, la app se actualiza y recarga sola
+// (sin esto, el celular seguía mostrando la versión guardada hasta abrirla dos veces).
+const actualizar = registerSW({
+  immediate: true,
+  onRegisteredSW(_url, registro) {
+    if (!registro) return;
+    // Además, se fija cada 30 minutos si hay una versión nueva (por si la app queda abierta).
+    setInterval(() => void registro.update(), 30 * 60 * 1000);
+  },
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") void actualizar(true);
+});
 
 const raiz = document.getElementById("raiz");
 if (!raiz) throw new Error("Falta el elemento #raiz");
