@@ -150,6 +150,7 @@ Convenciones: `id` UUID; `*_centavos` BIGINT; `creado_en` / `actualizado_en` en 
 - **sabados**: fecha (única), es_local, notas.
 - **pagos** con origen `INVITADO`: además de lo general, sábado, nombre (opcional) y camada (opcional) del invitado.
 - **cocinas**: sábado (una por sábado), camada, nombre y teléfono del responsable, token del link para tickets (se guarda solo su hash), estado (`ABIERTA` | `CERRADA`), cómo se cerró. Cada cocina tiene su cuenta de caja "en manos de la camada"; lo transferido, gastado, devuelto y reintegrado sale de los asientos de esa cuenta.
+- **movimientos_cocina**: la plata entre el plantel y la camada: adelanto, devolución, reintegro, sobrante no devuelto o exceso no reintegrado (estos dos últimos, solo el dueño). Se anulan, no se borran.
 
 ### Gastos
 - **gastos**: categoría (carne, bebidas, insumos, fiesta, otros), proveedor (texto por ahora; tabla en 2027), descripción, total_centavos, fecha, medio, pagado_por, foto del ticket, origen de la carga (`IA` | `MANUAL`), contexto (cocina, fiesta o sábado), estado (`CONFIRMADO` | `ANULADO`).

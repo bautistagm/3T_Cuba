@@ -15,6 +15,20 @@
       "when": 1795212036966,
       "tag": "0001_protecciones",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795215329419,
+      "tag": "0002_sabados",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795215330073,
+      "tag": "0003_protecciones_sabados",
+      "breakpoints": true
     }
   ]
 }
