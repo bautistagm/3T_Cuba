@@ -26,7 +26,9 @@ import { ErrorNegocio } from "./errores.js";
 import { ErrorHttp, requiereDueno, requiereSesion } from "./rutas/comun.js";
 import { rutasSabados } from "./rutas/sabados.js";
 import { rutasTickets } from "./rutas/tickets.js";
+import { rutasCaja } from "./rutas/caja.js";
 import { crearLectorGemini, lectorSinIa, type LectorTickets } from "./ia/lectorTickets.js";
+import { asistenteSinIa, crearAsistenteGemini, ErrorAsistenteIa, type AsistenteIa } from "./ia/asistente.js";
 
 export { ErrorHttp, requiereDueno, requiereSesion };
 
@@ -56,11 +58,15 @@ export async function construirApp(opciones: {
   db: BaseDeDatos;
   config: Config;
   lectorTickets?: LectorTickets;
+  asistente?: AsistenteIa;
 }): Promise<FastifyInstance> {
   const { db, config } = opciones;
   const lectorTickets =
     opciones.lectorTickets ??
     (config.GEMINI_API_KEY ? crearLectorGemini({ apiKey: config.GEMINI_API_KEY, modelos: config.GEMINI_MODELOS }) : lectorSinIa);
+  const asistente =
+    opciones.asistente ??
+    (config.GEMINI_API_KEY ? crearAsistenteGemini({ apiKey: config.GEMINI_API_KEY, modelos: config.GEMINI_MODELOS }) : asistenteSinIa);
   const enProduccion = config.NODE_ENV === "production";
 
   const app = Fastify({
@@ -100,6 +106,7 @@ export async function construirApp(opciones: {
     }
     if (error instanceof ErrorNegocio) return responderError(respuesta, error.estado, error.codigo, error.message);
     if (error instanceof ErrorCaja) return responderError(respuesta, 422, "ERROR_CAJA", error.message);
+    if (error instanceof ErrorAsistenteIa) return responderError(respuesta, 503, "IA_NO_DISPONIBLE", error.message);
     const conEstado = error as { statusCode?: number };
     if (conEstado.statusCode === 429) {
       return responderError(respuesta, 429, "DEMASIADOS_INTENTOS", "Demasiados intentos. Esperá un minuto.");
@@ -258,6 +265,7 @@ export async function construirApp(opciones: {
 
       rutasSabados(api, db);
       rutasTickets(api, db, lectorTickets);
+      rutasCaja(api, db, lectorTickets, asistente);
 
       api.setNotFoundHandler((_peticion, respuesta) =>
         responderError(respuesta, 404, "NO_EXISTE", "Esa dirección de la API no existe."),

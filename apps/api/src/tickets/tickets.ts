@@ -5,11 +5,12 @@
  * y los productos suman exactamente el total. Cualquier duda (o una foto repetida) va a "Revisar".
  */
 import { createHash } from "node:crypto";
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, isNull, ne } from "drizzle-orm";
 import { formatearPesos, sumarCentavos, MONTO_MAXIMO_CENTAVOS } from "@3t/shared";
 import { registrarAuditoria, type Actor } from "../auditoria/auditoria.js";
 import type { ActorAdmin } from "../caja/libro.js";
 import { gastoDeCocinaEnTx } from "../cocina/cocina.js";
+import { registrarGasto } from "../gastos/gastos.js";
 import type { BaseDeDatos, Ejecutor } from "../db/cliente.js";
 import { archivos, cocinas, tickets } from "../db/esquema.js";
 import { ErrorNegocio, noExiste } from "../errores.js";
@@ -64,28 +65,45 @@ export interface ResultadoTicket {
   gastoId: string | null;
 }
 
+/** A dónde va el gasto del ticket: a una cocina, o a la Caja (saliendo de la cuenta o del efectivo de alguien). */
+export type DestinoTicket = { tipo: "COCINA"; cocinaId: string } | { tipo: "CAJA"; cuentaOrigenCodigo: string };
+
 /** Sube la foto de un ticket de la cocina, la lee con IA y, si todo cierra, registra el gasto. */
-export async function subirTicketDeCocina(
+export function subirTicketDeCocina(
   db: BaseDeDatos,
   lector: LectorTickets,
   actor: Actor,
   datos: { cocinaId: string; contenido: Buffer },
+): Promise<ResultadoTicket> {
+  return subirTicket(db, lector, actor, { contenido: datos.contenido, destino: { tipo: "COCINA", cocinaId: datos.cocinaId } });
+}
+
+/** Sube la foto de un ticket, la lee con IA y, si todo cierra, registra el gasto. */
+export async function subirTicket(
+  db: BaseDeDatos,
+  lector: LectorTickets,
+  actor: Actor,
+  datos: { contenido: Buffer; destino: DestinoTicket },
 ): Promise<ResultadoTicket> {
   if (datos.contenido.length === 0) throw new ErrorNegocio(400, "IMAGEN_VACIA", "La foto está vacía.");
   if (datos.contenido.length > TAMANO_MAXIMO_IMAGEN) throw new ErrorNegocio(400, "IMAGEN_GRANDE", "La foto es demasiado grande (máximo 4 MB).");
   const tipoMime = tipoDeImagen(datos.contenido);
   if (!tipoMime) throw new ErrorNegocio(400, "NO_ES_IMAGEN", "El archivo no es una foto (JPG, PNG o WEBP).");
 
-  const [cocina] = await db.select().from(cocinas).where(eq(cocinas.id, datos.cocinaId)).limit(1);
-  if (!cocina) throw noExiste("La cocina");
-  if (cocina.estado !== "ABIERTA") throw new ErrorNegocio(409, "COCINA_CERRADA", "La cocina de ese sábado ya se cerró.");
+  const { destino } = datos;
+  if (destino.tipo === "COCINA") {
+    const [cocina] = await db.select().from(cocinas).where(eq(cocinas.id, destino.cocinaId)).limit(1);
+    if (!cocina) throw noExiste("La cocina");
+    if (cocina.estado !== "ABIERTA") throw new ErrorNegocio(409, "COCINA_CERRADA", "La cocina de ese sábado ya se cerró.");
+  }
 
   const sha256 = createHash("sha256").update(datos.contenido).digest("hex");
+  const mismoLugar = destino.tipo === "COCINA" ? eq(tickets.cocinaId, destino.cocinaId) : isNull(tickets.cocinaId);
   const [repetida] = await db
     .select({ id: tickets.id })
     .from(tickets)
     .innerJoin(archivos, eq(archivos.id, tickets.archivoId))
-    .where(and(eq(tickets.cocinaId, cocina.id), eq(archivos.sha256, sha256), ne(tickets.estado, "DESCARTADO")))
+    .where(and(mismoLugar, eq(archivos.sha256, sha256), ne(tickets.estado, "DESCARTADO")))
     .limit(1);
 
   // La IA se consulta fuera de la transacción: puede tardar y no tiene que bloquear la base.
@@ -114,19 +132,18 @@ export async function subirTicketDeCocina(
 
     let gastoId: string | null = null;
     if (!motivo && lectura) {
-      const gasto = await gastoDeCocinaEnTx(tx, actor, {
-        cocinaId: cocina.id,
-        fecha: fechaDelTicket(lectura.fecha),
-        proveedor: lectura.proveedor ?? undefined,
-        origenCarga: "IA",
-        items,
-      });
+      const comun = { fecha: fechaDelTicket(lectura.fecha), proveedor: lectura.proveedor ?? undefined, origenCarga: "IA" as const, items };
+      const gasto =
+        destino.tipo === "COCINA"
+          ? await gastoDeCocinaEnTx(tx, actor, { cocinaId: destino.cocinaId, ...comun })
+          : await registrarGasto(tx, actor, { cuentaOrigenCodigo: destino.cuentaOrigenCodigo, ...comun });
       gastoId = gasto.id;
     }
     const [ticket] = await tx
       .insert(tickets)
       .values({
-        cocinaId: cocina.id,
+        cocinaId: destino.tipo === "COCINA" ? destino.cocinaId : null,
+        cuentaOrigenCodigo: destino.tipo === "CAJA" ? destino.cuentaOrigenCodigo : null,
         archivoId: archivo.id,
         estado: gastoId ? "REGISTRADO" : "REVISAR",
         lecturaIa: lectura,
@@ -140,7 +157,7 @@ export async function subirTicketDeCocina(
       accion: gastoId ? "TICKET_REGISTRADO_POR_IA" : "TICKET_PARA_REVISAR",
       entidad: "ticket",
       entidadId: ticket.id,
-      despues: { cocinaId: cocina.id, gastoId, motivo, lectura },
+      despues: { destino, gastoId, motivo, lectura },
     });
     return { ticketId: ticket.id, estado: ticket.estado === "REGISTRADO" ? "REGISTRADO" : "REVISAR", motivoRevision: motivo, gastoId };
   });
@@ -164,13 +181,11 @@ export async function resolverTicket(
     const [ticket] = await tx.select().from(tickets).where(eq(tickets.id, ticketId)).for("update");
     if (!ticket) throw noExiste("El ticket");
     if (ticket.estado !== "REVISAR") throw new ErrorNegocio(409, "TICKET_YA_RESUELTO", "Este ticket ya se resolvió.");
-    if (!ticket.cocinaId) throw new ErrorNegocio(409, "TICKET_SIN_COCINA", "El ticket no está asociado a una cocina.");
-    const gasto = await gastoDeCocinaEnTx(tx, actor, {
-      cocinaId: ticket.cocinaId,
-      proveedor: datos.proveedor,
-      origenCarga: "MANUAL",
-      items: datos.items,
-    });
+    const comun = { proveedor: datos.proveedor, origenCarga: "MANUAL" as const, items: datos.items, fecha: new Date() };
+    let gasto;
+    if (ticket.cocinaId) gasto = await gastoDeCocinaEnTx(tx, actor, { cocinaId: ticket.cocinaId, ...comun });
+    else if (ticket.cuentaOrigenCodigo) gasto = await registrarGasto(tx, actor, { cuentaOrigenCodigo: ticket.cuentaOrigenCodigo, ...comun });
+    else throw new ErrorNegocio(409, "TICKET_SIN_DESTINO", "El ticket no tiene a dónde cargar el gasto.");
     await tx
       .update(tickets)
       .set({ estado: "REGISTRADO", gastoId: gasto.id, resueltoPorAdminId: actor.adminId })
@@ -192,8 +207,8 @@ export async function descartarTicket(db: BaseDeDatos, actor: ActorAdmin, ticket
   });
 }
 
-/** Tickets de una cocina, sin la foto (la foto se pide aparte). */
-export async function ticketsDeCocina(db: Ejecutor, cocinaId: string) {
+/** Tickets de una cocina (o de la Caja si cocinaId es null), sin la foto (la foto se pide aparte). */
+export async function ticketsDeCocina(db: Ejecutor, cocinaId: string | null) {
   return db
     .select({
       id: tickets.id,
@@ -205,7 +220,7 @@ export async function ticketsDeCocina(db: Ejecutor, cocinaId: string) {
       creadoEn: tickets.creadoEn,
     })
     .from(tickets)
-    .where(eq(tickets.cocinaId, cocinaId))
+    .where(cocinaId ? eq(tickets.cocinaId, cocinaId) : isNull(tickets.cocinaId))
     .orderBy(desc(tickets.creadoEn));
 }
 

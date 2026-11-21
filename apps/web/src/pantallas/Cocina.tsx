@@ -299,7 +299,7 @@ function LinkResponsable(props: { cocina: ResumenCocina["cocina"]; token: string
   );
 }
 
-function RevisarTicket(props: { ticket: Ticket; alListo: (t: string) => Promise<void>; alCancelar: () => void; alError: (m: string) => void }) {
+export function RevisarTicket(props: { ticket: Ticket; alListo: (t: string) => Promise<void>; alCancelar: () => void; alError: (m: string) => void }) {
   const lectura = props.ticket.lecturaIa;
   const iniciales = (lectura?.items ?? []).map((i) => ({
     descripcion: i.descripcion,

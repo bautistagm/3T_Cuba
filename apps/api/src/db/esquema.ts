@@ -440,6 +440,8 @@ export const tickets = pgTable(
     /** Por qué quedó para revisar. */
     motivoRevision: text(),
     gastoId: uuid().references(() => gastos.id),
+    /** Para tickets de Caja (no de una cocina): de qué cuenta sale la plata. */
+    cuentaOrigenCodigo: text(),
     subidoPorAdminId: uuid().references(() => admins.id),
     resueltoPorAdminId: uuid().references(() => admins.id),
     ...tiempos,
@@ -448,5 +450,58 @@ export const tickets = pgTable(
     index("tickets_cocina").on(t.cocinaId),
     index("tickets_estado").on(t.estado),
     check("tickets_registrado_con_gasto", sql`(${t.estado} = 'REGISTRADO') = (${t.gastoId} IS NOT NULL)`),
+    check("tickets_con_destino", sql`(${t.cocinaId} IS NOT NULL) <> (${t.cuentaOrigenCodigo} IS NOT NULL)`),
   ],
 );
+
+// ---------------------------------------------------------------------------
+// Efectivo con responsable: traspasos entre admins (el que recibe confirma).
+// ---------------------------------------------------------------------------
+
+export const estadoTraspaso = pgEnum("estado_traspaso", ["PENDIENTE", "CONFIRMADO", "RECHAZADO", "CANCELADO"]);
+
+export const traspasosEfectivo = pgTable(
+  "traspasos_efectivo",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    deAdminId: uuid()
+      .notNull()
+      .references(() => admins.id),
+    paraAdminId: uuid()
+      .notNull()
+      .references(() => admins.id),
+    montoCentavos: bigint({ mode: "bigint" }).notNull(),
+    nota: text(),
+    estado: estadoTraspaso().notNull().default("PENDIENTE"),
+    /** El asiento existe solo si se confirmó. */
+    asientoId: uuid()
+      .unique()
+      .references(() => asientosCaja.id),
+    resueltoEn: momento(),
+    ...tiempos,
+  },
+  (t) => [
+    index("traspasos_para").on(t.paraAdminId, t.estado),
+    index("traspasos_de").on(t.deAdminId, t.estado),
+    check("traspasos_monto_positivo", sql`${t.montoCentavos} > 0`),
+    check("traspasos_entre_distintos", sql`${t.deAdminId} <> ${t.paraAdminId}`),
+    check("traspasos_confirmado_con_asiento", sql`(${t.estado} = 'CONFIRMADO') = (${t.asientoId} IS NOT NULL)`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Control de caja: lo que el dueño ve en la reserva contra lo que dice el libro.
+// ---------------------------------------------------------------------------
+
+export const controlesCaja = pgTable("controles_caja", {
+  id: uuid().primaryKey().defaultRandom(),
+  declaradoCentavos: bigint({ mode: "bigint" }).notNull(),
+  libroCentavos: bigint({ mode: "bigint" }).notNull(),
+  diferenciaCentavos: bigint({ mode: "bigint" }).notNull(),
+  ajusteAsientoId: uuid().references(() => asientosCaja.id),
+  motivo: text(),
+  realizadoPorAdminId: uuid()
+    .notNull()
+    .references(() => admins.id),
+  creadoEn: momento().notNull().defaultNow(),
+});

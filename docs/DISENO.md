@@ -32,7 +32,10 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 - **Transferencia al alias** del plantel, con comprobante. No se usan links de pago ni débito automático de Mercado Pago porque cobran comisión.
 - **Efectivo** entregado a un administrador.
 - Quien quiera "débito automático" programa en su propio banco o billetera una transferencia automática el día 1. Es gratis y para la app es una transferencia más.
-- La cuenta es, por ahora, un **alias personal dedicado solo al plantel**. Cambiar a una cuenta del club es solo cambiar el alias y las credenciales.
+- **La cuenta es la de Mercado Pago personal del dueño** (decisión del dueño; opción "A"). La plata del plantel convive con la personal:
+  - La app lee los movimientos que entran a la cuenta (solo lectura) y **solo guarda los que coinciden con un pago del plantel**; el resto se descarta sin almacenarlo.
+  - Para no gastar la plata del plantel sin querer, el dueño la aparta en una **reserva** de Mercado Pago. La app le dice cuánto tendría que haber apartado.
+  - Si más adelante se usa otra cuenta (de un tesorero o del club), es solo cambiar el alias y las credenciales.
 - Un jugador puede pagar más de un mes junto (ej.: noviembre y diciembre).
 
 **Verificación automática de transferencias con IA**
@@ -76,8 +79,12 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 - Cada fiesta tiene su resultado: entradas menos gastos.
 
 **Caja**
-- Todo movimiento de plata (cuotas, invitados, entradas, gastos, rendiciones de efectivo) queda en un único libro.
-- Saldo separado en "cuenta" y "efectivo en manos de cada admin".
+- **Arranca en cero** (decisión del dueño): solo cuenta la plata que se mueve desde que se empieza a usar la app.
+- Todo movimiento de plata (cuotas, invitados, entradas, gastos, efectivo) queda en un único libro.
+- Saldo separado en: la cuenta (lo que tendría que estar apartado en la reserva), **el efectivo que tiene cada admin, con su nombre**, y lo que está en manos de cada camada que cocina.
+- **Efectivo con responsable:** el efectivo que cobra un admin queda a su nombre. Puede depositarlo en el alias (pasa a la cuenta) o entregárselo a otro admin o al dueño; en ese caso **el que recibe tiene que confirmarlo en la app**, y recién ahí pasa a ser responsable. Si no lo confirma, sigue a cargo del que lo tenía.
+- **Gastos que no son de un sábado** (ej.: compra para el almacén): se cargan en Caja, con foto del ticket leída por IA o a mano, y salen de la cuenta o del efectivo de quien pagó.
+- **Control contra la realidad:** el dueño carga cada tanto cuánto tiene apartado en la reserva del plantel. La app lo compara con lo que dice el libro y muestra la diferencia; si la hay, el dueño puede registrar un **ajuste** con motivo (queda en la auditoría y se ve separado en el análisis).
 - Análisis: gastos por mes con explicación, gasto por categoría y por producto, y preguntas en lenguaje natural a la IA.
 
 **Inteligencia artificial**
@@ -168,7 +175,8 @@ Convenciones: `id` UUID; `*_centavos` BIGINT; `creado_en` / `actualizado_en` en 
 - **cuentas_caja**: dónde está la plata (`ACTIVO`: la cuenta del alias, el efectivo de cada admin) y por qué entra o sale (`INGRESO`: cuotas, invitados, entradas; `EGRESO`: carne, bebidas, insumos, fiesta...).
 - **asientos_caja**: cada evento de plata: fecha, descripción, origen (pago, gasto, rendición, anulación, ajuste) y a qué asiento anula, si es una anulación.
 - **movimientos_caja**: las líneas de cada asiento: cuenta y monto_centavos con signo. Las líneas de un asiento suman cero.
-- **rendiciones**: un admin entrega o deposita efectivo: admin, monto, destino, confirmado por.
+- **traspasos_efectivo**: un admin le entrega efectivo a otro: de quién, para quién, monto, estado (`PENDIENTE` | `CONFIRMADO` | `RECHAZADO` | `CANCELADO`). El asiento de caja se registra recién cuando el que recibe confirma.
+- **controles_caja**: lo que el dueño declaró que hay en la reserva, lo que decía el libro, la diferencia y, si se ajustó, el asiento del ajuste.
 - **conciliaciones**: fecha, resultado, diferencias encontradas.
 - **auditoria**: actor, acción, entidad, id, antes, después, fecha, IP.
 
@@ -184,8 +192,8 @@ Los jugadores reales se cargan en **febrero de 2027**. Hasta entonces se constru
 | 1 | Diseño | ✅ Aprobado |
 | 2 | Base del backend | ✅ Monorepo, base de datos, login, roles, auditoría, libro de caja, tests y CI |
 | 3 | ✅ Publicación gratis + pantalla principal | La app instalada en el celular del dueño: login, instalación del dueño, pantalla principal con el escudo y gestión de administradores |
-| 4 | Sábados | Invitados, cocina por camada y gastos con foto del ticket leída por IA |
-| 5 | Caja y análisis | Libro, saldos, gráficos y preguntas a la IA |
+| 4 | ✅ Sábados | Invitados, cocina por camada y gastos con foto del ticket leída por IA |
+| 5 | ✅ Caja y análisis | Libro, saldos, efectivo con responsable, traspasos entre admins, control contra la reserva, gráficos y preguntas a la IA |
 | 6 | Verificación de transferencias con IA | Lectura de comprobantes, cruce con los movimientos de la cuenta y bandeja "Revisar" |
 | 7 | Fiestas | Creación, venta por alias con comprobante, entradas con QR por email y puerta |
 | 8 | Jugadores | Alta, baja, eliminación e importación desde el Formulario de Google (se usa en febrero) |

@@ -170,6 +170,48 @@ export interface PaginaResponsable {
   gastos: { id: string; fecha: string; proveedor: string | null; totalCentavos: string; items: { descripcion: string; cantidad: string | null; subtotalCentavos: string }[] }[];
 }
 
+export interface Traspaso {
+  id: string;
+  deAdminId: string;
+  paraAdminId: string;
+  deNombre: string;
+  paraNombre: string;
+  montoCentavos: string;
+  nota: string | null;
+  creadoEn: string;
+}
+
+export interface EstadoCaja {
+  totalCentavos: string;
+  cuentaCentavos: string;
+  efectivo: { adminId: string; nombre: string; centavos: string }[];
+  camadas: { cocinaId: string; camada: string; fecha: string; centavos: string }[];
+  miEfectivoCentavos: string;
+  ultimoControl: { declaradoCentavos: string; libroCentavos: string; diferenciaCentavos: string; creadoEn: string; ajusteAsientoId: string | null } | null;
+  traspasosPendientes: Traspaso[];
+  administradores: { id: string; nombre: string }[];
+  ticketsParaRevisar: Ticket[];
+}
+
+export interface MovimientoCaja {
+  id: string;
+  fecha: string;
+  creadoEn: string;
+  descripcion: string;
+  origen: string;
+  tipo: "ENTRADA" | "SALIDA" | "INTERNO";
+  montoCentavos: string;
+  categoria: string | null;
+  registradoPor: string;
+  anulado: boolean;
+}
+
+export interface Analisis {
+  gastosPorMes: { mes: string; totalCentavos: string; porCategoria: Record<Categoria, string> }[];
+  ingresosPorMes: { mes: string; totalCentavos: string; porOrigen: Record<string, string> }[];
+  productos: { producto: string; categoria: Categoria; totalCentavos: string; veces: number }[];
+}
+
 type ItemParaEnviar = { descripcion: string; cantidad?: string; categoria: Categoria; subtotalCentavos: string };
 
 export const api = {
@@ -211,6 +253,23 @@ export const api = {
   ticketsDeCocina: (cocinaId: string) => pedir<{ tickets: Ticket[] }>("GET", `/cocinas/${cocinaId}/tickets`),
   resolverTicket: (id: string, datos: { proveedor?: string; items: ItemParaEnviar[] }) => pedir<unknown>("POST", `/tickets/${id}/resolver`, datos),
   descartarTicket: (id: string, motivo: string) => pedir<unknown>("POST", `/tickets/${id}/descartar`, { motivo }),
+
+  caja: () => pedir<EstadoCaja>("GET", "/caja"),
+  movimientosCaja: (antesDe?: string) =>
+    pedir<{ movimientos: MovimientoCaja[] }>("GET", `/caja/movimientos${antesDe ? `?antesDe=${encodeURIComponent(antesDe)}` : ""}`),
+  depositar: (montoCentavos: string, nota?: string) => pedir<unknown>("POST", "/caja/depositos", nota ? { montoCentavos, nota } : { montoCentavos }),
+  entregarEfectivo: (paraAdminId: string, montoCentavos: string, nota?: string) =>
+    pedir<unknown>("POST", "/caja/traspasos", nota ? { paraAdminId, montoCentavos, nota } : { paraAdminId, montoCentavos }),
+  confirmarTraspaso: (id: string) => pedir<unknown>("POST", `/caja/traspasos/${id}/confirmar`),
+  rechazarTraspaso: (id: string) => pedir<unknown>("POST", `/caja/traspasos/${id}/rechazar`),
+  gastoCaja: (datos: { desde: "CUENTA" | "EFECTIVO"; proveedor?: string; items: ItemParaEnviar[] }) => pedir<unknown>("POST", "/caja/gastos", datos),
+  ticketCaja: (desde: "CUENTA" | "EFECTIVO", imagenBase64: string) =>
+    pedir<{ estado: "REGISTRADO" | "REVISAR"; motivoRevision: string | null }>("POST", "/caja/tickets", { desde, imagenBase64 }),
+  controlarCaja: (declaradoCentavos: string, ajustar: boolean, motivo?: string) =>
+    pedir<unknown>("POST", "/caja/controles", motivo ? { declaradoCentavos, ajustar, motivo } : { declaradoCentavos, ajustar }),
+  analisis: () => pedir<Analisis>("GET", "/caja/analisis"),
+  explicarMes: (mes: string) => pedir<{ explicacion: string }>("POST", "/caja/analisis/explicar", { mes }),
+  preguntar: (pregunta: string) => pedir<{ respuesta: string }>("POST", "/caja/analisis/preguntar", { pregunta }),
 
   paginaResponsable: (token: string) => pedir<PaginaResponsable>("GET", `/publico/cocina/${token}`),
   subirTicketResponsable: (token: string, imagenBase64: string) =>

@@ -95,7 +95,7 @@ export async function cobrarInvitado(db: BaseDeDatos, actor: ActorAdmin, datos: 
 
     const asientoId = await registrarAsiento(tx, actor, {
       fecha: new Date(),
-      descripcion: `Invitado sábado ${sabado.fecha}${quien ? ` (${quien})` : ""}`,
+      descripcion: `Invitado sábado ${sabado.fecha.slice(8, 10)}/${sabado.fecha.slice(5, 7)}${quien ? ` (${quien})` : ""}`,
       origen: "PAGO",
       lineas: [
         { cuentaCodigo: datos.medio === "EFECTIVO" ? codigoEfectivo(actor.adminId) : "CUENTA", montoCentavos: monto },

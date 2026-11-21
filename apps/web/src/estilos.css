@@ -215,3 +215,39 @@ fieldset.opciones { border: none; padding: 0; margin: 0; display: flex; flex-dir
 .total-linea { margin: 0; font-size: 16px; text-align: right; }
 .link-texto { margin: 0; font-size: 13px; background: var(--fondo); padding: 10px; border-radius: 10px; overflow-wrap: anywhere; }
 .foto-ticket { width: 100%; max-height: 420px; object-fit: contain; border-radius: 10px; background: #fff; border: 1px solid var(--linea); }
+
+/* ---------- Caja ---------- */
+.monto-grande { font-family: var(--titulo); font-size: 34px; font-weight: 800; line-height: 1.1; }
+.lista.clara li { border-top-color: var(--linea-oscura); color: #fff; font-size: 14px; }
+.lista.clara li span { color: var(--texto-claro); }
+.link-claro { color: var(--texto-claro); }
+.link-claro:hover { color: #fff; }
+.texto-azul { color: var(--azul); }
+.texto-gris { color: var(--texto-2); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-boton { min-height: 40px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--linea-fuerte); background: #fff; font-size: 13px; font-weight: 600; cursor: pointer; font-family: var(--cuerpo); color: var(--texto); }
+.chip-boton.activo { background: var(--texto); color: #fff; border-color: var(--texto); }
+.grafico { display: flex; align-items: flex-end; gap: 2px; height: 170px; border-bottom: 1px solid var(--linea-fuerte); padding-top: 20px; }
+.barra-mes { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; background: none; border: none; padding: 0 3px; cursor: pointer; font-family: var(--cuerpo); position: relative; }
+.barra-mes .valor { font-size: 11px; font-weight: 700; white-space: nowrap; min-height: 14px; color: var(--texto); }
+.barra-mes .barra { display: block; width: 100%; border-radius: 4px 4px 0 0; background: #a9bde6; }
+.barra-mes .barra.activa { background: var(--azul); }
+.barra-mes .etiqueta { position: absolute; bottom: -22px; font-size: 12px; color: var(--texto-2); }
+.barra-mes .etiqueta.activa { color: var(--texto); font-weight: 700; }
+.grafico + * { margin-top: 18px; }
+.tarjeta.destacada { border: 2px solid var(--azul); }
+.barra-categoria { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.pista { height: 10px; background: var(--gris-suave); border-radius: 4px; overflow: hidden; flex: 1; }
+.relleno { height: 100%; background: var(--azul); border-radius: 4px; }
+.producto-fila { display: grid; grid-template-columns: 96px minmax(0, 1fr) 92px; gap: 8px; align-items: center; font-size: 13px; }
+.producto-fila strong { text-align: right; }
+.explicacion { margin: 0; background: var(--azul-suave); border-radius: 12px; padding: 12px; font-size: 14px; line-height: 1.5; }
+.ejemplo { min-height: 44px; text-align: left; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; background: transparent; color: #fff; border: 1px solid #3a4048; cursor: pointer; font-family: var(--cuerpo); }
+.ejemplo:hover { border-color: var(--texto-claro); }
+.fila-pregunta { flex-direction: row; gap: 8px; }
+.fila-pregunta input { flex: 1; min-width: 0; background: var(--negro-2); color: #fff; border-color: #3a4048; }
+.respuesta { margin: 0; background: #fff; color: var(--texto); border-radius: 12px; padding: 12px; font-size: 14px; line-height: 1.5; white-space: pre-line; }
+.tarjeta.oscura h2 { color: #fff; }
+
+/* Los montos de las listas no se cortan en dos líneas */
+.lista li > strong { white-space: nowrap; }
