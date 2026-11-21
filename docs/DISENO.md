@@ -192,8 +192,8 @@ Los jugadores reales se cargan en **febrero de 2027**. Hasta entonces se constru
 | 1 | Diseño | ✅ Aprobado |
 | 2 | Base del backend | ✅ Monorepo, base de datos, login, roles, auditoría, libro de caja, tests y CI |
 | 3 | ✅ Publicación gratis + pantalla principal | La app instalada en el celular del dueño: login, instalación del dueño, pantalla principal con el escudo y gestión de administradores |
-| 4 | Sábados | Invitados, cocina por camada y gastos con foto del ticket leída por IA |
-| 5 | Caja y análisis | Libro, saldos, gráficos y preguntas a la IA |
+| 4 | ✅ Sábados | Invitados, cocina por camada y gastos con foto del ticket leída por IA |
+| 5 | ✅ Caja y análisis | Libro, saldos, efectivo con responsable, traspasos entre admins, control contra la reserva, gráficos y preguntas a la IA |
 | 6 | Verificación de transferencias con IA | Lectura de comprobantes, cruce con los movimientos de la cuenta y bandeja "Revisar" |
 | 7 | Fiestas | Creación, venta por alias con comprobante, entradas con QR por email y puerta |
 | 8 | Jugadores | Alta, baja, eliminación e importación desde el Formulario de Google (se usa en febrero) |
