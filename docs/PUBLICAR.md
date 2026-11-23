@@ -33,6 +33,16 @@ Las claves (la dirección de la base y el código de instalación) se copian dir
 
 Queda con el escudo como ícono y se abre como una app.
 
+## 5. Conectar Mercado Pago (solo consulta)
+
+La app necesita una clave para **consultar** lo que entra a tu cuenta. Mercado Pago no tiene claves "de solo lectura": esta clave técnicamente también serviría para mover plata, así que tratala como una contraseña. La app está hecha para que solo pueda consultar (ver `docs/DISENO.md`, regla 5).
+
+1. Entrá a https://www.mercadopago.com.ar/developers con tu cuenta de Mercado Pago y andá a **Tus integraciones** → **Crear aplicación**. Ponele de nombre "3T" (si te pregunta qué vas a integrar, elegí cualquier opción de pagos online; no se usa).
+2. Dentro de la aplicación, buscá **Credenciales de producción** y copiá el **Access Token** (empieza con `APP_USR-`). Si te pide activar las credenciales de producción, completá lo que pida.
+3. En Render: **plantel-3t** → **Environment** → **Add Environment Variable**. En *Key* poné `MP_ACCESS_TOKEN` y en *Value* pegá el Access Token. Tocá **Save** (la app se vuelve a publicar sola en un minuto).
+4. **Nunca** pegues esa clave en un chat, un mail ni en GitHub. Si alguna vez se filtra, en la misma pantalla de credenciales se puede renovar.
+5. Para probar: mandate una transferencia de $1 desde otra cuenta o banco a tu alias, y en la app andá a **Ajustes** → **Mercado Pago** → **Probar conexión**.
+
 ## Para saber
 
 - En el plan gratis, si nadie usa la app por 15 minutos, se "duerme" y el primer ingreso tarda hasta un minuto. Antes de usarla con plata real se agrega un aviso cada 14 minutos para mantenerla despierta.

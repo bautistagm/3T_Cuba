@@ -18,8 +18,13 @@ services:
         value: "22"
       - key: CARPETA_WEB
         value: /opt/render/project/src/apps/web/dist
-      # Estos dos los carga el dueño en el panel de Render (nunca van al repositorio):
+      # Estos los carga el dueño en el panel de Render (nunca van al repositorio):
       - key: DATABASE_URL
         sync: false
       - key: CODIGO_INSTALACION
+        sync: false
+      # Opcionales: sin ellas la app funciona, pero sin IA o sin consultar Mercado Pago.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: MP_ACCESS_TOKEN
         sync: false
