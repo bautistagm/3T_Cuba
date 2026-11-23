@@ -16,7 +16,7 @@ export interface ConexionBase {
 }
 
 export function conectarBase(url: string): ConexionBase {
-  const pool = new pg.Pool({ connectionString: url, max: 10 });
+  const pool = new pg.Pool({ connectionString: url, max: 10, connectionTimeoutMillis: 30_000 });
   const db = drizzle(pool, { schema: esquema, casing: "snake_case" });
   return { db, cerrar: () => pool.end() };
 }
