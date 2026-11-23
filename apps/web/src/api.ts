@@ -212,6 +212,20 @@ export interface Analisis {
   productos: { producto: string; categoria: Categoria; totalCentavos: string; veces: number }[];
 }
 
+export interface PruebaMercadoPago {
+  cuenta: { id: string; apodo: string | null };
+  movimientos: {
+    id: string;
+    fecha: string | null;
+    montoCentavos: string | null;
+    estado: string | null;
+    tipoOperacion: string | null;
+    medio: string | null;
+    referencias: { campo: string; valor: string }[];
+    pagador: { campo: string; valor: string }[];
+  }[];
+}
+
 type ItemParaEnviar = { descripcion: string; cantidad?: string; categoria: Categoria; subtotalCentavos: string };
 
 export const api = {
@@ -225,6 +239,7 @@ export const api = {
   crearAdmin: (datos: { nombre: string; email: string; telefono?: string; contrasena: string }) =>
     pedir<{ admin: AdminListado }>("POST", "/admins", datos),
   desactivarAdmin: (id: string) => pedir<{ admin: AdminListado }>("POST", `/admins/${id}/desactivar`),
+  probarMercadoPago: () => pedir<PruebaMercadoPago>("GET", "/mercadopago/prueba"),
 
   sabadoActual: () => pedir<DetalleSabado>("GET", "/sabados/actual"),
   sabado: (id: string) => pedir<DetalleSabado>("GET", `/sabados/${id}`),

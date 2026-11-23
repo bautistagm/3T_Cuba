@@ -15,6 +15,11 @@ const esquemaConfig = z.object({
   CARPETA_WEB: z.string().optional(),
   /** Clave gratis de Google AI Studio para leer tickets. Sin ella, los tickets quedan para cargar a mano. */
   GEMINI_API_KEY: z.string().min(10).optional(),
+  /**
+   * Access Token de producción de Mercado Pago (de la cuenta del dueño). La app lo usa SOLO para consultar
+   * movimientos (ver mercadopago/cliente.ts). Sin él, todas las transferencias las confirma una persona.
+   */
+  MP_ACCESS_TOKEN: z.string().min(10).optional(),
   /** Modelos de Gemini a usar, en orden de preferencia (si uno falla o se satura, se prueba el siguiente). */
   GEMINI_MODELOS: z
     .string()

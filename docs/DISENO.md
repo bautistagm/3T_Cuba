@@ -99,6 +99,7 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 3. **Libro de caja de doble partida**: cada evento de plata es un asiento con dos o más movimientos que suman exactamente cero (de dónde sale y adónde va). El saldo se calcula sumando movimientos; nunca se guarda un saldo "a mano". La base de datos rechaza asientos desbalanceados, cambios y borrados, y solo acepta anulaciones que sean el espejo exacto del asiento original.
 4. **Auditoría**: cada cambio de datos guarda quién, cuándo, qué había antes y qué hay después.
 5. **Mercado Pago solo en lectura**: la app lee los movimientos de la cuenta pero no puede mover plata. Cada movimiento se usa para confirmar un único pago.
+   - Mercado Pago no ofrece una clave de "solo lectura": la clave de acceso técnicamente permite mover plata. **El dueño lo aceptó (23/11/2026)** con esta protección: el código que habla con Mercado Pago solo permite consultas (`GET` a una lista cerrada de direcciones) y rechaza cualquier otra cosa; la clave vive solo en Render (`MP_ACCESS_TOKEN`), nunca en el chat ni en el repositorio.
 6. **Conciliación diaria automática**: lo registrado en 3T contra los movimientos de la cuenta. Cualquier diferencia queda marcada para el dueño.
 7. **La IA confirma sola solo lo que puede verificar.** Un comprobante se confirma automáticamente únicamente si monto, fecha y número de operación coinciden con un movimiento real de la cuenta que no se haya usado antes. Todo lo demás va a la bandeja "Revisar".
 8. **Operaciones críticas en transacciones**: registrar un pago, imputarlo y asentarlo en caja ocurre todo junto o no ocurre.
@@ -194,7 +195,7 @@ Los jugadores reales se cargan en **febrero de 2027**. Hasta entonces se constru
 | 3 | ✅ Publicación gratis + pantalla principal | La app instalada en el celular del dueño: login, instalación del dueño, pantalla principal con el escudo y gestión de administradores |
 | 4 | ✅ Sábados | Invitados, cocina por camada y gastos con foto del ticket leída por IA |
 | 5 | ✅ Caja y análisis | Libro, saldos, efectivo con responsable, traspasos entre admins, control contra la reserva, gráficos y preguntas a la IA |
-| 6 | Verificación de transferencias con IA | Lectura de comprobantes, cruce con los movimientos de la cuenta y bandeja "Revisar" |
+| 6 | Verificación de transferencias con IA | Lectura de comprobantes, cruce con los movimientos de la cuenta y bandeja "Revisar". **Decisión del dueño (23/11/2026):** en esta etapa se arma el motor y la bandeja, pero no se conecta todavía a ningún cobro; lo estrenan cuotas (etapa 9) y fiestas (etapa 7). Incluye una prueba de conexión para el dueño, para ver cómo aparece una transferencia real de prueba. |
 | 7 | Fiestas | Creación, venta por alias con comprobante, entradas con QR por email y puerta |
 | 8 | Jugadores | Alta, baja, eliminación e importación desde el Formulario de Google (se usa en febrero) |
 | 9 | Cuotas y pagos | Períodos, cargos, efectivo, transferencias verificadas, anulaciones, rendiciones y lista de deudores |
@@ -205,7 +206,6 @@ Cada etapa termina con: tests pasando, revisión del dueño y prueba en un entor
 ## 7. Pendientes para decidir más adelante
 
 - Monto de cada cuota, precio de invitados, alias de la cuenta (antes de usar plata real).
-- Cómo leer los movimientos de la cuenta de Mercado Pago (API de solo lectura) (Etapa 6).
 - Contraseña de aplicación de Google para enviar desde plantelcuba@gmail.com (Etapa 7).
 - Consulta con un contador sobre Ingresos Brutos de la cuenta personal (antes de usar plata real).
 - Cambio de contraseña propio y "blanquear" la contraseña de un administrador (antes de usar la app con plata real).

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { api, ErrorApi, type AdminListado } from "../api";
 import { useAdmin } from "../sesion";
+import { PanelMercadoPago } from "./PruebaMercadoPago";
 
 const MAXIMO_ADMINS = 5;
 
@@ -107,6 +108,7 @@ export function Ajustes() {
             ))}
           </section>
         )}
+        <PanelMercadoPago />
       </main>
     </>
   );
