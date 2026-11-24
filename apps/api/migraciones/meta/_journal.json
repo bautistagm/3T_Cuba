@@ -155,6 +155,20 @@
       "when": 1795546891247,
       "tag": "0021_tandas",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1795547528542,
+      "tag": "0022_transferencia_devuelta",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1795547529302,
+      "tag": "0023_eliminar_fiesta",
+      "breakpoints": true
     }
   ]
 }

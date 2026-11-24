@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { formatearDni } from "@3t/shared";
 import { api, type DetalleFiesta, type FiestaListada } from "../api";
 import { Encabezado, mensajeDe, useAviso } from "../componentes/comunes";
+import { BotonEliminar, EliminarFiesta } from "../componentes/EliminarFiesta";
+import { GraficosFiesta } from "../componentes/GraficosFiesta";
 import { leerMonto, pesos } from "../plata";
 import { useAdmin } from "../sesion";
 
@@ -14,6 +16,7 @@ export function PantallaFiestas() {
   const yo = useAdmin();
   const [fiestas, setFiestas] = useState<FiestaListada[] | null>(null);
   const [creando, setCreando] = useState(false);
+  const [eliminando, setEliminando] = useState<string | null>(null);
   const { setAviso, Aviso } = useAviso();
 
   const cargar = useCallback(async () => {
@@ -59,10 +62,15 @@ export function PantallaFiestas() {
                     <span>{fechaFiesta(f.fechaHora)} · {f.vendidas} vendidas{f.pendientes > 0 ? ` · ${f.pendientes} sin pagar` : ""}</span>
                   </Link>
                   <span className={`chip ${f.estado === "A_LA_VENTA" ? "azul" : "gris"}`}>{f.estado === "A_LA_VENTA" ? "A la venta" : "Cerrada"}</span>
+                  {yo.rol === "DUENO" && <BotonEliminar etiqueta={`Eliminar ${f.nombre}`} alTocar={() => setEliminando(f.id)} />}
                 </li>
               ))}
             </ul>
           </section>
+        )}
+        {eliminando && (
+          <EliminarFiesta fiestaId={eliminando} alCerrar={() => setEliminando(null)}
+            alEliminar={(nombre) => { setEliminando(null); setAviso({ tipo: "ok", texto: `${nombre} eliminada.` }); void cargar(); }} />
         )}
       </main>
     </>
@@ -137,6 +145,8 @@ export function PantallaFiesta() {
   const [d, setD] = useState<DetalleFiesta | null>(null);
   const [tipoVisto, setTipoVisto] = useState<string | null>(null);
   const [copiado, setCopiado] = useState<string | null>(null);
+  const [eliminando, setEliminando] = useState(false);
+  const irA = useNavigate();
   const { setAviso, Aviso } = useAviso();
 
   const cargar = useCallback(async () => {
@@ -176,6 +186,7 @@ export function PantallaFiesta() {
       <main className="contenido">
         <Aviso />
         <section className="tarjeta">
+          {esDueno && <span className="esquina"><BotonEliminar etiqueta="Eliminar fiesta" alTocar={() => setEliminando(true)} /></span>}
           <p className="ayuda">{fechaFiesta(d.fiesta.fechaHora)}{d.fiesta.lugar ? ` · ${d.fiesta.lugar}` : ""}</p>
           <div className="numeros">
             {d.tipos.map((t) => (
@@ -195,6 +206,12 @@ export function PantallaFiesta() {
             </button>
           )}
         </section>
+
+        <GraficosFiesta d={d} />
+
+        {eliminando && (
+          <EliminarFiesta fiestaId={d.fiesta.id} alCerrar={() => setEliminando(false)} alEliminar={() => void irA("/fiestas")} />
+        )}
 
         {esDueno && <PreciosYTandas tipos={d.tipos} hacer={hacer} />}
 

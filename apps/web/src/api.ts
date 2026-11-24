@@ -335,6 +335,7 @@ export interface DetalleFiesta {
     nombre: string;
     dni: string;
     estado: "PENDIENTE_PAGO" | "VALIDA" | "USADA" | "ANULADA";
+    pagadaEn: string | null;
     usadaEn: string | null;
     usadaPor: string | null;
     email: string;
@@ -427,6 +428,9 @@ export const api = {
     pedir<{ fiesta: { id: string } }>("POST", "/fiestas", datos),
   fiesta: (id: string) => pedir<DetalleFiesta>("GET", `/fiestas/${id}`),
   ventaFiesta: (id: string, abierta: boolean) => pedir<unknown>("POST", `/fiestas/${id}/venta`, { abierta }),
+  antesDeEliminarFiesta: (id: string) => pedir<{ nombre: string; entradas: number; pagos: number; totalCentavos: string }>("GET", `/fiestas/${id}/eliminar`),
+  eliminarFiesta: (id: string, plata?: { destino: "DEVUELTA" } | { destino: "QUEDA"; concepto: string }) =>
+    pedir<{ ok: true }>("POST", `/fiestas/${id}/eliminar`, plata ? { plata } : {}),
   agregarTanda: (tipoId: string, datos: { precioCentavos: string; hasta: string }) => pedir<{ id: string }>("POST", `/tipos-entrada/${tipoId}/tandas`, datos),
   quitarTanda: (id: string) => pedir<{ ok: true }>("POST", `/tandas/${id}/quitar`),
   nuevoLinkPuerta: (id: string) => pedir<{ tokenPuerta: string }>("POST", `/fiestas/${id}/link-puerta`),

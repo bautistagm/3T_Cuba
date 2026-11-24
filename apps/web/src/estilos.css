@@ -338,3 +338,29 @@ input[type="search"] { width: 100%; }
 .pantallazo-detalle { font-size: 20px; font-weight: 600; }
 .pantallazo-nota { font-size: 16px; opacity: 0.9; max-width: 420px; }
 .bloque-tandas { border-top: 1px solid var(--linea); padding-top: 12px; margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+
+/* --- Eliminar (X gris) --- */
+.boton-x { border: none; background: transparent; color: #8a938c; font-size: 26px; line-height: 1; width: 36px; height: 36px; border-radius: 99px; cursor: pointer; flex: none; }
+.boton-x:hover { background: var(--gris-suave); color: var(--texto); }
+.tarjeta { position: relative; }
+.esquina { position: absolute; top: 6px; right: 6px; }
+.capa { position: fixed; inset: 0; z-index: 40; background: rgba(18, 20, 23, 0.55); display: flex; align-items: flex-end; justify-content: center; padding: 12px; }
+.ventana { width: 100%; max-width: 480px; max-height: 90vh; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+.opcion { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--linea-fuerte); border-radius: 12px; padding: 12px; cursor: pointer; }
+.opcion > span { display: flex; flex-direction: column; gap: 2px; }
+.opcion input { margin-top: 3px; width: 18px; height: 18px; }
+
+/* --- Gráficos de la fiesta --- */
+.grafico { margin: 4px 0 8px; display: flex; flex-direction: column; width: 100%; }
+.grafico svg { width: 100%; height: auto; display: block; }
+.grafico .eje { stroke: var(--linea); stroke-width: 1; }
+.grafico .marca { stroke: var(--texto-2); stroke-width: 1; stroke-dasharray: 3 3; }
+.grafico .texto-marca { font-size: 9px; fill: var(--texto-2); font-family: var(--cuerpo); }
+.grafico .barra { fill: #8fb0ea; }
+.grafico .barra.activa { fill: var(--azul); }
+.grafico .valor { font-size: 11px; font-weight: 700; fill: var(--texto); font-family: var(--cuerpo); }
+.grafico .etiqueta { font-size: 9px; fill: var(--texto-2); font-family: var(--cuerpo); }
+.grafico .barra-grupo { cursor: pointer; }
+.grafico figcaption { margin-top: 4px; }
+.barra-horizontal { width: 90px; height: 8px; border-radius: 99px; background: var(--gris-suave); overflow: hidden; flex: none; align-self: center; }
+.barra-horizontal > span { display: block; height: 100%; background: var(--azul); border-radius: 99px; }

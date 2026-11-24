@@ -719,6 +719,8 @@ export const resolucionTransferencia = pgEnum("resolucion_transferencia", [
   "ENTRADAS_AUTO",
   /** Compra de entradas asignada por el dueño. */
   "ENTRADAS_MANUAL",
+  /** Se devolvió la plata (por ejemplo, al eliminar la fiesta). Sale de la caja. */
+  "DEVUELTA",
 ]);
 
 export const transferenciasRecibidas = pgTable(

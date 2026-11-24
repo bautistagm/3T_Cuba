@@ -1,0 +1,1 @@
+ALTER TYPE "public"."resolucion_transferencia" ADD VALUE 'DEVUELTA';
