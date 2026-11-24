@@ -505,3 +505,86 @@ export const controlesCaja = pgTable("controles_caja", {
     .references(() => admins.id),
   creadoEn: momento().notNull().defaultNow(),
 });
+
+// ---------------------------------------------------------------------------
+// Verificación de transferencias (etapa 6): comprobantes y entradas de Mercado Pago usadas.
+// ---------------------------------------------------------------------------
+
+/** Para qué es el comprobante. Lo usan fiestas (etapa 7) y cuotas (etapa 9). */
+export const destinoComprobante = pgEnum("destino_comprobante", ["CUOTA", "ENTRADA_FIESTA"]);
+
+export const estadoComprobante = pgEnum("estado_comprobante", [
+  /** Coincidió con una entrada real de la cuenta según la regla: se confirmó solo. */
+  "VERIFICADO_AUTO",
+  /** Hubo alguna duda: lo tiene que mirar un admin. */
+  "REVISAR",
+  /** Un admin lo confirmó a mano, eligiendo la entrada de la cuenta que le corresponde. */
+  "CONFIRMADO",
+  /** Un admin decidió que no corresponde (con motivo). */
+  "RECHAZADO",
+]);
+
+/**
+ * Entradas de la cuenta de Mercado Pago que ya confirmaron un pago. Solo se guardan las que coinciden
+ * con un pago del plantel (opción A). La clave primaria es el número de Mercado Pago: un movimiento
+ * confirma como máximo un pago, y un número de operación no se usa dos veces.
+ */
+export const entradasMercadoPago = pgTable(
+  "entradas_mercado_pago",
+  {
+    mpPagoId: text().primaryKey(),
+    e2eId: text(),
+    montoCentavos: bigint({ mode: "bigint" }).notNull(),
+    fecha: momento().notNull(),
+    cuitPagador: text(),
+    creadoEn: momento().notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("entradas_mp_e2e").on(t.e2eId),
+    check("entradas_mp_monto_positivo", sql`${t.montoCentavos} > 0`),
+  ],
+);
+
+export const comprobantes = pgTable(
+  "comprobantes",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    destino: destinoComprobante().notNull(),
+    /** La cuota o la entrada a la que corresponde (sus tablas llegan en las etapas 7 y 9). */
+    referenciaId: uuid(),
+    /** Lo que había que pagar, si se sabe. */
+    montoEsperadoCentavos: bigint({ mode: "bigint" }),
+    archivoId: uuid()
+      .notNull()
+      .references(() => archivos.id),
+    estado: estadoComprobante().notNull(),
+    /** Lo que leyó la IA, tal cual. */
+    lecturaIa: jsonb(),
+    codigoRevision: text(),
+    motivoRevision: text(),
+    /** Entradas de la cuenta que podrían corresponder (sin datos de otras personas: número, monto y fecha). */
+    candidatos: jsonb(),
+    /** La entrada de la cuenta con la que se confirmó. Única: no se usa dos veces. */
+    mpPagoId: text()
+      .unique()
+      .references(() => entradasMercadoPago.mpPagoId),
+    confirmadoPor: text(),
+    subidoPor: text(),
+    resueltoPorAdminId: uuid().references(() => admins.id),
+    motivoRechazo: text(),
+    ...tiempos,
+  },
+  (t) => [
+    index("comprobantes_estado").on(t.estado),
+    index("comprobantes_referencia").on(t.referenciaId),
+    check(
+      "comprobantes_confirmado_con_entrada",
+      sql`(${t.estado} IN ('VERIFICADO_AUTO', 'CONFIRMADO')) = (${t.mpPagoId} IS NOT NULL)`,
+    ),
+    check("comprobantes_rechazo_con_motivo", sql`(${t.estado} <> 'RECHAZADO') OR (${t.motivoRechazo} IS NOT NULL)`),
+    check(
+      "comprobantes_monto_esperado_positivo",
+      sql`${t.montoEsperadoCentavos} IS NULL OR ${t.montoEsperadoCentavos} > 0`,
+    ),
+  ],
+);

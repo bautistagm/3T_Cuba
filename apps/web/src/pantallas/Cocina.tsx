@@ -206,7 +206,15 @@ export function PantallaCocina() {
   );
 }
 
-function BotonFoto(props: { texto: string; alSubir: (b64: string) => Promise<void>; alFallar: (m: string) => void; claro?: boolean }) {
+function BotonFoto(props: {
+  texto: string;
+  alSubir: (b64: string) => Promise<void>;
+  alFallar: (m: string) => void;
+  claro?: boolean;
+  /** false para elegir de la galería (capturas de pantalla, como un comprobante). */
+  camara?: boolean;
+  textoSubiendo?: string;
+}) {
   const entrada = useRef<HTMLInputElement>(null);
   const [subiendo, setSubiendo] = useState(false);
   async function elegido(archivo: File | undefined) {
@@ -223,10 +231,10 @@ function BotonFoto(props: { texto: string; alSubir: (b64: string) => Promise<voi
   }
   return (
     <>
-      <input ref={entrada} type="file" accept="image/*" capture="environment" className="oculto" tabIndex={-1}
+      <input ref={entrada} type="file" accept="image/*" {...(props.camara === false ? {} : { capture: "environment" as const })} className="oculto" tabIndex={-1}
         onChange={(e) => void elegido(e.target.files?.[0])} />
       <button type="button" className="boton principal" disabled={subiendo} onClick={() => entrada.current?.click()}>
-        {subiendo ? "Leyendo el ticket… (puede tardar unos segundos)" : props.texto}
+        {subiendo ? (props.textoSubiendo ?? "Leyendo el ticket… (puede tardar unos segundos)") : props.texto}
       </button>
     </>
   );

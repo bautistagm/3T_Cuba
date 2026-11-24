@@ -6,6 +6,7 @@
  * No guarda nada: lo que lee se muestra y se descarta.
  */
 import { consultarMercadoPago, ErrorMercadoPago, importeACentavos } from "./cliente.js";
+import { leer, texto } from "./lectura.js";
 
 type Fetch = typeof fetch;
 
@@ -50,21 +51,6 @@ export interface MovimientoDePrueba {
 export interface ResultadoPrueba {
   cuenta: { id: string; apodo: string | null };
   movimientos: MovimientoDePrueba[];
-}
-
-function leer(objeto: unknown, ruta: string): unknown {
-  let actual: unknown = objeto;
-  for (const parte of ruta.split(".")) {
-    if (actual === null || typeof actual !== "object") return undefined;
-    actual = (actual as Record<string, unknown>)[parte];
-  }
-  return actual;
-}
-
-function texto(valor: unknown): string | null {
-  if (typeof valor === "string") return valor.trim() === "" ? null : valor.trim().slice(0, 120);
-  if (typeof valor === "number" || typeof valor === "bigint") return String(valor);
-  return null;
 }
 
 function presentes(pago: unknown, rutas: readonly string[]) {

@@ -260,3 +260,9 @@ fieldset.opciones { border: none; padding: 0; margin: 0; display: flex; flex-dir
 .movimiento-mp dl { margin: 0.35rem 0 0; display: grid; gap: 0.25rem; }
 .movimiento-mp dt { color: var(--texto-2); font-family: ui-monospace, monospace; font-size: 0.75rem; overflow-wrap: anywhere; }
 .movimiento-mp dd { margin: 0; overflow-wrap: anywhere; }
+.prueba-comprobante { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--linea); }
+.prueba-comprobante h3 { margin: 0 0 0.25rem; font-family: var(--titulo); font-size: 1rem; }
+.lectura-comprobante { display: grid; gap: 0.4rem; margin: 0.75rem 0 0; }
+.lectura-comprobante div { display: flex; justify-content: space-between; gap: 1rem; }
+.lectura-comprobante dt { color: var(--texto-2); }
+.lectura-comprobante dd { margin: 0; text-align: right; overflow-wrap: anywhere; }

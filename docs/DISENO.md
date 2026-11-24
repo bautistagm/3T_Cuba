@@ -40,7 +40,13 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 
 **Verificación automática de transferencias con IA**
 - El jugador (o el comprador de una entrada) sube la captura del comprobante en su link. La IA lee fecha, hora, monto, nombre y CUIT/CUIL de quien pagó, banco y número de operación.
-- La app cruza esos datos con los **movimientos reales de la cuenta**, leídos de Mercado Pago en modo solo lectura (sin costo). Si coinciden monto, fecha y número de operación, el pago se **confirma solo** y se imputa a la persona correcta.
+- La app cruza esos datos con los **movimientos reales de la cuenta**, leídos de Mercado Pago en modo solo lectura (sin costo). **Regla para confirmar solo (decisión del dueño, 24/11/2026):**
+  - Siempre: el **monto coincide al centavo**, el movimiento es una entrada aprobada a la cuenta y **no se usó antes** para otro pago.
+  - Y además, una de estas dos:
+    1. El **número de operación** del comprobante coincide con el de Mercado Pago (id del pago o código de la transferencia). Es lo que pasa cuando pagan desde Mercado Pago.
+    2. Si no hay número que coincida (pagos desde bancos): el **CUIT/CUIL de quien pagó** coincide, la fecha del movimiento está a **3 días o menos** de la del comprobante y hay **un único** movimiento sin usar que cumple todo.
+  - Cualquier otra cosa (dos candidatos posibles, comprobante ilegible, CUIL distinto, monto distinto, la plata todavía no figura) va a **"Revisar"**.
+  - Prueba real del 24/11/2026: una transferencia de $1 desde Mercado Pago trajo el mismo número de operación y el mismo CUIL que el comprobante.
 - Un mismo número de operación no se puede usar dos veces (evita que dos personas presenten el mismo comprobante).
 - Si algo no coincide o falta (comprobante editado, monto distinto, la plata todavía no figura), va a la bandeja **"Revisar"** para que lo resuelva un admin. La IA nunca confirma algo que no pudo verificar contra la cuenta.
 
@@ -101,7 +107,7 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 5. **Mercado Pago solo en lectura**: la app lee los movimientos de la cuenta pero no puede mover plata. Cada movimiento se usa para confirmar un único pago.
    - Mercado Pago no ofrece una clave de "solo lectura": la clave de acceso técnicamente permite mover plata. **El dueño lo aceptó (23/11/2026)** con esta protección: el código que habla con Mercado Pago solo permite consultas (`GET` a una lista cerrada de direcciones) y rechaza cualquier otra cosa; la clave vive solo en Render (`MP_ACCESS_TOKEN`), nunca en el chat ni en el repositorio.
 6. **Conciliación diaria automática**: lo registrado en 3T contra los movimientos de la cuenta. Cualquier diferencia queda marcada para el dueño.
-7. **La IA confirma sola solo lo que puede verificar.** Un comprobante se confirma automáticamente únicamente si monto, fecha y número de operación coinciden con un movimiento real de la cuenta que no se haya usado antes. Todo lo demás va a la bandeja "Revisar".
+7. **La IA confirma sola solo lo que puede verificar.** Un comprobante se confirma automáticamente únicamente si coincide con un movimiento real de la cuenta que no se haya usado antes, según la regla de "Verificación automática de transferencias" (monto exacto + número de operación, o monto exacto + CUIT/CUIL + fecha cercana + candidato único). Todo lo demás va a la bandeja "Revisar".
 8. **Operaciones críticas en transacciones**: registrar un pago, imputarlo y asentarlo en caja ocurre todo junto o no ocurre.
 9. **Links personales** con tokens largos y aleatorios, que se pueden revocar. Los links de camada vencen al cerrar la fecha.
 10. **Secretos** (credenciales de Mercado Pago, del email, de la IA) solo en variables de entorno del servidor, nunca en el código ni en el repositorio.

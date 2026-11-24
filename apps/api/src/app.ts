@@ -29,6 +29,9 @@ import { rutasTickets } from "./rutas/tickets.js";
 import { rutasCaja } from "./rutas/caja.js";
 import { rutasMercadoPago } from "./rutas/mercadopago.js";
 import { ErrorMercadoPago } from "./mercadopago/cliente.js";
+import { buscarEntradas } from "./mercadopago/movimientos.js";
+import { crearLectorComprobantesGemini, lectorComprobantesSinIa, type LectorComprobantes } from "./ia/lectorComprobantes.js";
+import type { DependenciasVerificacion } from "./verificacion/comprobantes.js";
 import { crearLectorGemini, lectorSinIa, type LectorTickets } from "./ia/lectorTickets.js";
 import { asistenteSinIa, crearAsistenteGemini, ErrorAsistenteIa, type AsistenteIa } from "./ia/asistente.js";
 
@@ -61,6 +64,7 @@ export async function construirApp(opciones: {
   config: Config;
   lectorTickets?: LectorTickets;
   asistente?: AsistenteIa;
+  lectorComprobantes?: LectorComprobantes;
   /** Solo para tests: reemplaza la conexión real con Mercado Pago. */
   fetchMercadoPago?: typeof fetch;
 }): Promise<FastifyInstance> {
@@ -71,6 +75,15 @@ export async function construirApp(opciones: {
   const asistente =
     opciones.asistente ??
     (config.GEMINI_API_KEY ? crearAsistenteGemini({ apiKey: config.GEMINI_API_KEY, modelos: config.GEMINI_MODELOS }) : asistenteSinIa);
+  const lectorComprobantes =
+    opciones.lectorComprobantes ??
+    (config.GEMINI_API_KEY ? crearLectorComprobantesGemini({ apiKey: config.GEMINI_API_KEY, modelos: config.GEMINI_MODELOS }) : lectorComprobantesSinIa);
+  const claveMp = config.MP_ACCESS_TOKEN;
+  const fetchMp = opciones.fetchMercadoPago;
+  const verificacion: DependenciasVerificacion = {
+    lector: lectorComprobantes,
+    buscarEntradas: claveMp ? (desde, hasta) => buscarEntradas(claveMp, desde, hasta, fetchMp ? { fetch: fetchMp } : {}) : null,
+  };
   const enProduccion = config.NODE_ENV === "production";
 
   const app = Fastify({
@@ -274,7 +287,7 @@ export async function construirApp(opciones: {
       rutasSabados(api, db);
       rutasTickets(api, db, lectorTickets);
       rutasCaja(api, db, lectorTickets, asistente);
-      rutasMercadoPago(api, config.MP_ACCESS_TOKEN, opciones.fetchMercadoPago);
+      rutasMercadoPago(api, db, config.MP_ACCESS_TOKEN, verificacion, opciones.fetchMercadoPago);
 
       api.setNotFoundHandler((_peticion, respuesta) =>
         responderError(respuesta, 404, "NO_EXISTE", "Esa dirección de la API no existe."),

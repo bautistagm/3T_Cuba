@@ -107,6 +107,7 @@ describe("API: prueba de conexión", () => {
   let app: FastifyInstance;
   let cookieDueno = "";
   let cookieJuan = "";
+  let pedidosMp: Pedido[] = [];
   let ip = 1;
   const entrar = async (email: string, contrasena: string) => {
     const r = await app.inject({ method: "POST", url: "/api/auth/login", payload: { email, contrasena }, remoteAddress: `10.6.0.${ip++}` });
@@ -115,11 +116,26 @@ describe("API: prueba de conexión", () => {
 
   beforeAll(async () => {
     conexion = await prepararBaseLimpia();
-    const { falso } = mercadoPagoFalso([transferenciaEntrante]);
+    const mp = mercadoPagoFalso([transferenciaEntrante, pagoQueHiceYo]);
+    const falso = mp.falso;
+    pedidosMp = mp.pedidos;
     app = await construirApp({
       db: conexion.db,
       config: { ...configDePrueba, MP_ACCESS_TOKEN: "clave-de-prueba" },
       fetchMercadoPago: falso,
+      lectorComprobantes: async () => ({
+        es_comprobante: true,
+        legible: true,
+        fecha_hora: "2026-11-23T15:00",
+        monto_centavos: 100,
+        nombre_pagador: "Juan Pérez",
+        cuit_pagador: "20-12345678-9",
+        banco_origen: "Banco Nación",
+        nombre_destinatario: "Bautista",
+        cuit_destinatario: null,
+        numero_operacion: "COELSA-ABC",
+        observaciones: null,
+      }),
     });
     const d = await crearDueno(conexion.db, { nombre: "Bautista", email: "b@ejemplo.com", contrasena: "clave-del-dueno-1" });
     await crearAdmin(conexion.db, { tipo: "ADMIN", adminId: d.id, rol: "DUENO" }, { nombre: "Juan", email: "j@ejemplo.com", contrasena: "clave-de-juan-12" });
@@ -137,5 +153,19 @@ describe("API: prueba de conexión", () => {
     expect(dueno.json().movimientos[0]).toMatchObject({ id: "9001", montoCentavos: "100" });
     const juan = await app.inject({ method: "GET", url: "/api/mercadopago/prueba", headers: { cookie: cookieJuan } });
     expect(juan.statusCode).toBe(403);
+  });
+
+  it("prueba con un comprobante desde un banco: lo confirmaría por CUIT, sin guardar nada", async () => {
+    const imagenBase64 = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(200, 7)]).toString("base64");
+    const r = await app.inject({ method: "POST", url: "/api/verificacion/probar", headers: { cookie: cookieDueno }, payload: { imagenBase64 } });
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toMatchObject({ resultado: "CONFIRMAR", por: "CUIT", mpPagoId: "9001", montoCentavos: "100" });
+    const busqueda = pedidosMp.findLast((p) => p.url.includes("/v1/payments/search"));
+    expect(busqueda?.url).toContain("begin_date=2026-11-20");
+    expect(pedidosMp.every((p) => p.metodo === "GET")).toBe(true);
+    const juan = await app.inject({ method: "POST", url: "/api/verificacion/probar", headers: { cookie: cookieJuan }, payload: { imagenBase64 } });
+    expect(juan.statusCode).toBe(403);
+    const revisar = await app.inject({ method: "GET", url: "/api/comprobantes/revisar", headers: { cookie: cookieJuan } });
+    expect(revisar.json()).toEqual({ comprobantes: [] });
   });
 });

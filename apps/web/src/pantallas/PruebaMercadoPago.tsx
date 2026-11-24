@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { api, type PruebaMercadoPago } from "../api";
+import { api, type PruebaComprobante, type PruebaMercadoPago } from "../api";
 import { mensajeDe } from "../componentes/comunes";
 import { pesos } from "../plata";
+import { BotonFoto } from "./Cocina";
 
 const formatoFechaHora = new Intl.DateTimeFormat("es-AR", {
   day: "numeric",
@@ -80,6 +81,58 @@ export function PanelMercadoPago() {
           </ul>
         </div>
       )}
+      <PruebaDeComprobante />
     </section>
+  );
+}
+
+const POR: Record<string, string> = {
+  NUMERO_OPERACION: "coincide el número de operación",
+  CUIT: "coincide el CUIT/CUIL de quien pagó, la fecha y es la única transferencia así",
+};
+
+/** Sube un comprobante real y muestra qué haría la app. No guarda nada. */
+function PruebaDeComprobante() {
+  const [resultado, setResultado] = useState<PruebaComprobante | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const l = resultado?.lectura;
+  return (
+    <div className="prueba-comprobante">
+      <h3>Probar con un comprobante</h3>
+      <p className="ayuda">
+        Subí la captura de una transferencia que te hayan hecho. La IA la lee y la app te dice si la habría confirmado sola. No se guarda nada.
+      </p>
+      <BotonFoto
+        texto="Elegir comprobante"
+        textoSubiendo="Leyendo el comprobante… (puede tardar unos segundos)"
+        camara={false}
+        alSubir={async (b64) => {
+          setError(null);
+          setResultado(null);
+          setResultado(await api.probarComprobante(b64));
+        }}
+        alFallar={setError}
+      />
+      {error && <p className="aviso error" role="alert">{error}</p>}
+      {resultado && l && (
+        <>
+          {resultado.resultado === "CONFIRMAR" ? (
+            <p className="aviso ok" role="status">
+              ✓ Se habría confirmado solo: {POR[resultado.por ?? ""] ?? resultado.por} (operación {resultado.mpPagoId}).
+            </p>
+          ) : (
+            <p className="aviso error" role="status">Habría ido a «Revisar»: {resultado.motivo}</p>
+          )}
+          <dl className="lectura-comprobante">
+            <div><dt>Monto</dt><dd>{l.monto_centavos === null ? "—" : pesos(String(l.monto_centavos))}</dd></div>
+            <div><dt>Fecha</dt><dd>{l.fecha_hora?.replace("T", " ") ?? "—"}</dd></div>
+            <div><dt>Quién pagó</dt><dd>{[l.nombre_pagador, l.cuit_pagador].filter(Boolean).join(" · ") || "—"}</dd></div>
+            <div><dt>Desde</dt><dd>{l.banco_origen ?? "—"}</dd></div>
+            <div><dt>N.º de operación</dt><dd>{l.numero_operacion ?? "—"}</dd></div>
+            {l.observaciones && <div><dt>Notas de la IA</dt><dd>{l.observaciones}</dd></div>}
+          </dl>
+        </>
+      )}
+    </div>
   );
 }

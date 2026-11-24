@@ -226,6 +226,25 @@ export interface PruebaMercadoPago {
   }[];
 }
 
+export interface PruebaComprobante {
+  lectura: {
+    es_comprobante: boolean;
+    legible: boolean;
+    fecha_hora: string | null;
+    monto_centavos: number | null;
+    nombre_pagador: string | null;
+    cuit_pagador: string | null;
+    banco_origen: string | null;
+    numero_operacion: string | null;
+    observaciones: string | null;
+  };
+  resultado: "CONFIRMAR" | "REVISAR";
+  por?: "NUMERO_OPERACION" | "CUIT";
+  mpPagoId?: string;
+  codigo?: string;
+  motivo?: string;
+}
+
 type ItemParaEnviar = { descripcion: string; cantidad?: string; categoria: Categoria; subtotalCentavos: string };
 
 export const api = {
@@ -240,6 +259,7 @@ export const api = {
     pedir<{ admin: AdminListado }>("POST", "/admins", datos),
   desactivarAdmin: (id: string) => pedir<{ admin: AdminListado }>("POST", `/admins/${id}/desactivar`),
   probarMercadoPago: () => pedir<PruebaMercadoPago>("GET", "/mercadopago/prueba"),
+  probarComprobante: (imagenBase64: string) => pedir<PruebaComprobante>("POST", "/verificacion/probar", { imagenBase64 }),
 
   sabadoActual: () => pedir<DetalleSabado>("GET", "/sabados/actual"),
   sabado: (id: string) => pedir<DetalleSabado>("GET", `/sabados/${id}`),
