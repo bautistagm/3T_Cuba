@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { antesDeEliminarFiesta, eliminarFiesta, eliminarFiestaSchema } from "../fiestas/eliminar.js";
 import { ingresosSchema, listaDePuerta, registrarIngresos } from "../fiestas/puerta.js";
 import { z } from "zod";
 import type { BaseDeDatos } from "../db/cliente.js";
@@ -71,6 +72,13 @@ export function rutasFiestas(
     const { abierta } = z.object({ abierta: z.boolean() }).parse(peticion.body);
     const f = await cambiarEstadoVenta(db, actorDe(peticion), idSchema.parse(peticion.params).id, abierta);
     return { estado: f.estado };
+  });
+
+  api.get("/fiestas/:id/eliminar", async (peticion) => antesDeEliminarFiesta(db, actorDe(peticion), idSchema.parse(peticion.params).id));
+
+  api.post("/fiestas/:id/eliminar", async (peticion) => {
+    const r = await eliminarFiesta(db, actorDe(peticion), idSchema.parse(peticion.params).id, eliminarFiestaSchema.parse(peticion.body ?? {}));
+    return { ok: true, pagos: r.pagos, totalCentavos: r.totalCentavos };
   });
 
   api.post("/tipos-entrada/:id/tandas", async (peticion, respuesta) => {

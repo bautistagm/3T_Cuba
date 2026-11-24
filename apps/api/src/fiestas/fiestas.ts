@@ -118,9 +118,10 @@ export async function detalleFiesta(db: BaseDeDatos, fiestaId: string, actor: Ac
     : [];
   const ahora = new Date();
   const lista = await db
-    .select({ e: entradas, email: comprasEntradas.email, telefono: comprasEntradas.telefono })
+    .select({ e: entradas, email: comprasEntradas.email, telefono: comprasEntradas.telefono, pagadaEn: pagos.fecha })
     .from(entradas)
     .innerJoin(comprasEntradas, eq(comprasEntradas.id, entradas.compraId))
+    .leftJoin(pagos, and(eq(pagos.id, comprasEntradas.pagoId), eq(pagos.estado, "CONFIRMADO")))
     .where(eq(entradas.fiestaId, fiestaId))
     .orderBy(asc(entradas.nombre));
   const recaudado = await db
@@ -149,7 +150,8 @@ export async function detalleFiesta(db: BaseDeDatos, fiestaId: string, actor: Ac
         tandas: suyas.map((x) => ({ id: x.id, precioCentavos: x.precioCentavos, hasta: x.hasta.toISOString(), termino: x.hasta <= ahora })),
       };
     }),
-    entradas: lista.map(({ e, email, telefono }) => ({
+    entradas: lista.map(({ e, email, telefono, pagadaEn }) => ({
+      pagadaEn: pagadaEn?.toISOString() ?? null,
       id: e.id,
       compraId: e.compraId,
       tipoId: e.tipoId,
