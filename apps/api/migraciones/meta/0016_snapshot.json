@@ -1,0 +1,4034 @@
+{
+  "id": "baacb079-05b4-4529-a6d4-60425bf6916c",
+  "prevId": "68159959-9093-467c-af0a-fcb05abde330",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.admins": {
+      "name": "admins",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "telefono": {
+          "name": "telefono",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rol": {
+          "name": "rol",
+          "type": "rol_admin",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "activo": {
+          "name": "activo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "hash_contrasena": {
+          "name": "hash_contrasena",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "admins_email_unico": {
+          "name": "admins_email_unico",
+          "columns": [
+            {
+              "expression": "lower(\"email\")",
+              "isExpression": true,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "admins_un_solo_dueno": {
+          "name": "admins_un_solo_dueno",
+          "columns": [
+            {
+              "expression": "rol",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"admins\".\"rol\" = 'DUENO'",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.archivos": {
+      "name": "archivos",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tipo_mime": {
+          "name": "tipo_mime",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tamano_bytes": {
+          "name": "tamano_bytes",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sha256": {
+          "name": "sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contenido": {
+          "name": "contenido",
+          "type": "bytea",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.asientos_caja": {
+      "name": "asientos_caja",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "fecha": {
+          "name": "fecha",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descripcion": {
+          "name": "descripcion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "origen": {
+          "name": "origen",
+          "type": "origen_asiento",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "origen_id": {
+          "name": "origen_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "anula_asiento_id": {
+          "name": "anula_asiento_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "creado_por_admin_id": {
+          "name": "creado_por_admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "asientos_fecha": {
+          "name": "asientos_fecha",
+          "columns": [
+            {
+              "expression": "fecha",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "asientos_origen": {
+          "name": "asientos_origen",
+          "columns": [
+            {
+              "expression": "origen",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "origen_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "asientos_caja_anula_asiento_id_asientos_caja_id_fk": {
+          "name": "asientos_caja_anula_asiento_id_asientos_caja_id_fk",
+          "tableFrom": "asientos_caja",
+          "columnsFrom": [
+            "anula_asiento_id"
+          ],
+          "tableTo": "asientos_caja",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "asientos_caja_creado_por_admin_id_admins_id_fk": {
+          "name": "asientos_caja_creado_por_admin_id_admins_id_fk",
+          "tableFrom": "asientos_caja",
+          "columnsFrom": [
+            "creado_por_admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "asientos_caja_anulaAsientoId_unique": {
+          "name": "asientos_caja_anulaAsientoId_unique",
+          "columns": [
+            "anula_asiento_id"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "asientos_anulacion_coherente": {
+          "name": "asientos_anulacion_coherente",
+          "value": "(\"asientos_caja\".\"origen\" = 'ANULACION') = (\"asientos_caja\".\"anula_asiento_id\" IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.auditoria": {
+      "name": "auditoria",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actor_tipo": {
+          "name": "actor_tipo",
+          "type": "tipo_actor",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_admin_id": {
+          "name": "actor_admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "accion": {
+          "name": "accion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entidad": {
+          "name": "entidad",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entidad_id": {
+          "name": "entidad_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "antes": {
+          "name": "antes",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "despues": {
+          "name": "despues",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ip": {
+          "name": "ip",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "auditoria_entidad": {
+          "name": "auditoria_entidad",
+          "columns": [
+            {
+              "expression": "entidad",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "entidad_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "auditoria_fecha": {
+          "name": "auditoria_fecha",
+          "columns": [
+            {
+              "expression": "creado_en",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "auditoria_actor_admin_id_admins_id_fk": {
+          "name": "auditoria_actor_admin_id_admins_id_fk",
+          "tableFrom": "auditoria",
+          "columnsFrom": [
+            "actor_admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "auditoria_actor_admin": {
+          "name": "auditoria_actor_admin",
+          "value": "(\"auditoria\".\"actor_tipo\" = 'ADMIN') = (\"auditoria\".\"actor_admin_id\" IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.cargos": {
+      "name": "cargos",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "jugador_id": {
+          "name": "jugador_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "periodo_id": {
+          "name": "periodo_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "monto_centavos": {
+          "name": "monto_centavos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "estado": {
+          "name": "estado",
+          "type": "estado_cargo",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDIENTE'"
+        },
+        "pago_id": {
+          "name": "pago_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "motivo_anulacion": {
+          "name": "motivo_anulacion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "anulado_por_admin_id": {
+          "name": "anulado_por_admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "anulado_en": {
+          "name": "anulado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "cargos_jugador_periodo": {
+          "name": "cargos_jugador_periodo",
+          "columns": [
+            {
+              "expression": "jugador_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "periodo_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "cargos_periodo_estado": {
+          "name": "cargos_periodo_estado",
+          "columns": [
+            {
+              "expression": "periodo_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "estado",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "cargos_pago": {
+          "name": "cargos_pago",
+          "columns": [
+            {
+              "expression": "pago_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "cargos_jugador_id_jugadores_id_fk": {
+          "name": "cargos_jugador_id_jugadores_id_fk",
+          "tableFrom": "cargos",
+          "columnsFrom": [
+            "jugador_id"
+          ],
+          "tableTo": "jugadores",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "cargos_periodo_id_periodos_cuota_id_fk": {
+          "name": "cargos_periodo_id_periodos_cuota_id_fk",
+          "tableFrom": "cargos",
+          "columnsFrom": [
+            "periodo_id"
+          ],
+          "tableTo": "periodos_cuota",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "cargos_pago_id_pagos_id_fk": {
+          "name": "cargos_pago_id_pagos_id_fk",
+          "tableFrom": "cargos",
+          "columnsFrom": [
+            "pago_id"
+          ],
+          "tableTo": "pagos",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "cargos_anulado_por_admin_id_admins_id_fk": {
+          "name": "cargos_anulado_por_admin_id_admins_id_fk",
+          "tableFrom": "cargos",
+          "columnsFrom": [
+            "anulado_por_admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "cargos_monto_positivo": {
+          "name": "cargos_monto_positivo",
+          "value": "\"cargos\".\"monto_centavos\" > 0"
+        },
+        "cargos_pagado_con_pago": {
+          "name": "cargos_pagado_con_pago",
+          "value": "(\"cargos\".\"estado\" = 'PAGADO') = (\"cargos\".\"pago_id\" IS NOT NULL)"
+        },
+        "cargos_anulado_con_motivo": {
+          "name": "cargos_anulado_con_motivo",
+          "value": "(\"cargos\".\"estado\" <> 'ANULADO') OR (\"cargos\".\"motivo_anulacion\" IS NOT NULL AND \"cargos\".\"anulado_en\" IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.cocinas": {
+      "name": "cocinas",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "sabado_id": {
+          "name": "sabado_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "camada": {
+          "name": "camada",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "responsable_nombre": {
+          "name": "responsable_nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "responsable_telefono": {
+          "name": "responsable_telefono",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "estado": {
+          "name": "estado",
+          "type": "estado_cocina",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ABIERTA'"
+        },
+        "cerrada_en": {
+          "name": "cerrada_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cerrada_por_admin_id": {
+          "name": "cerrada_por_admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nota_cierre": {
+          "name": "nota_cierre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "cocinas_sabado_id_sabados_id_fk": {
+          "name": "cocinas_sabado_id_sabados_id_fk",
+          "tableFrom": "cocinas",
+          "columnsFrom": [
+            "sabado_id"
+          ],
+          "tableTo": "sabados",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "cocinas_cerrada_por_admin_id_admins_id_fk": {
+          "name": "cocinas_cerrada_por_admin_id_admins_id_fk",
+          "tableFrom": "cocinas",
+          "columnsFrom": [
+            "cerrada_por_admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "cocinas_sabadoId_unique": {
+          "name": "cocinas_sabadoId_unique",
+          "columns": [
+            "sabado_id"
+          ],
+          "nullsNotDistinct": false
+        },
+        "cocinas_tokenHash_unique": {
+          "name": "cocinas_tokenHash_unique",
+          "columns": [
+            "token_hash"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "cocinas_cierre_coherente": {
+          "name": "cocinas_cierre_coherente",
+          "value": "(\"cocinas\".\"estado\" = 'CERRADA') = (\"cocinas\".\"cerrada_en\" IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.compras_entradas": {
+      "name": "compras_entradas",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "fiesta_id": {
+          "name": "fiesta_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo_id": {
+          "name": "tipo_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dni_pagador": {
+          "name": "dni_pagador",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "telefono": {
+          "name": "telefono",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cantidad": {
+          "name": "cantidad",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "precio_unitario_centavos": {
+          "name": "precio_unitario_centavos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total_centavos": {
+          "name": "total_centavos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "estado": {
+          "name": "estado",
+          "type": "estado_compra_entradas",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDIENTE_PAGO'"
+        },
+        "pago_id": {
+          "name": "pago_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "codigo_consulta": {
+          "name": "codigo_consulta",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "compras_pendientes_dni": {
+          "name": "compras_pendientes_dni",
+          "columns": [
+            {
+              "expression": "dni_pagador",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "estado",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "compras_entradas_fiesta_id_fiestas_id_fk": {
+          "name": "compras_entradas_fiesta_id_fiestas_id_fk",
+          "tableFrom": "compras_entradas",
+          "columnsFrom": [
+            "fiesta_id"
+          ],
+          "tableTo": "fiestas",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "compras_entradas_tipo_id_tipos_entrada_id_fk": {
+          "name": "compras_entradas_tipo_id_tipos_entrada_id_fk",
+          "tableFrom": "compras_entradas",
+          "columnsFrom": [
+            "tipo_id"
+          ],
+          "tableTo": "tipos_entrada",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "compras_entradas_pago_id_pagos_id_fk": {
+          "name": "compras_entradas_pago_id_pagos_id_fk",
+          "tableFrom": "compras_entradas",
+          "columnsFrom": [
+            "pago_id"
+          ],
+          "tableTo": "pagos",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "compras_entradas_pagoId_unique": {
+          "name": "compras_entradas_pagoId_unique",
+          "columns": [
+            "pago_id"
+          ],
+          "nullsNotDistinct": false
+        },
+        "compras_entradas_codigoConsulta_unique": {
+          "name": "compras_entradas_codigoConsulta_unique",
+          "columns": [
+            "codigo_consulta"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "compras_cantidad_valida": {
+          "name": "compras_cantidad_valida",
+          "value": "\"compras_entradas\".\"cantidad\" BETWEEN 1 AND 10"
+        },
+        "compras_total_cuadra": {
+          "name": "compras_total_cuadra",
+          "value": "\"compras_entradas\".\"total_centavos\" = \"compras_entradas\".\"precio_unitario_centavos\" * \"compras_entradas\".\"cantidad\""
+        },
+        "compras_pagada_con_pago": {
+          "name": "compras_pagada_con_pago",
+          "value": "(\"compras_entradas\".\"estado\" <> 'PAGADA') OR (\"compras_entradas\".\"pago_id\" IS NOT NULL)"
+        },
+        "compras_pendiente_sin_pago": {
+          "name": "compras_pendiente_sin_pago",
+          "value": "(\"compras_entradas\".\"estado\" <> 'PENDIENTE_PAGO') OR (\"compras_entradas\".\"pago_id\" IS NULL)"
+        },
+        "compras_dni_valido": {
+          "name": "compras_dni_valido",
+          "value": "\"compras_entradas\".\"dni_pagador\" ~ '^[1-9][0-9]{6,7}$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.comprobantes": {
+      "name": "comprobantes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "destino": {
+          "name": "destino",
+          "type": "destino_comprobante",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "referencia_id": {
+          "name": "referencia_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "monto_esperado_centavos": {
+          "name": "monto_esperado_centavos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "archivo_id": {
+          "name": "archivo_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "estado": {
+          "name": "estado",
+          "type": "estado_comprobante",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lectura_ia": {
+          "name": "lectura_ia",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "codigo_revision": {
+          "name": "codigo_revision",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "motivo_revision": {
+          "name": "motivo_revision",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "candidatos": {
+          "name": "candidatos",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mp_pago_id": {
+          "name": "mp_pago_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "confirmado_por": {
+          "name": "confirmado_por",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subido_por": {
+          "name": "subido_por",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resuelto_por_admin_id": {
+          "name": "resuelto_por_admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "motivo_rechazo": {
+          "name": "motivo_rechazo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "comprobantes_estado": {
+          "name": "comprobantes_estado",
+          "columns": [
+            {
+              "expression": "estado",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "comprobantes_referencia": {
+          "name": "comprobantes_referencia",
+          "columns": [
+            {
+              "expression": "referencia_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "comprobantes_archivo_id_archivos_id_fk": {
+          "name": "comprobantes_archivo_id_archivos_id_fk",
+          "tableFrom": "comprobantes",
+          "columnsFrom": [
+            "archivo_id"
+          ],
+          "tableTo": "archivos",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "comprobantes_mp_pago_id_entradas_mercado_pago_mp_pago_id_fk": {
+          "name": "comprobantes_mp_pago_id_entradas_mercado_pago_mp_pago_id_fk",
+          "tableFrom": "comprobantes",
+          "columnsFrom": [
+            "mp_pago_id"
+          ],
+          "tableTo": "entradas_mercado_pago",
+          "columnsTo": [
+            "mp_pago_id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "comprobantes_resuelto_por_admin_id_admins_id_fk": {
+          "name": "comprobantes_resuelto_por_admin_id_admins_id_fk",
+          "tableFrom": "comprobantes",
+          "columnsFrom": [
+            "resuelto_por_admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "comprobantes_mpPagoId_unique": {
+          "name": "comprobantes_mpPagoId_unique",
+          "columns": [
+            "mp_pago_id"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "comprobantes_confirmado_con_entrada": {
+          "name": "comprobantes_confirmado_con_entrada",
+          "value": "(\"comprobantes\".\"estado\" IN ('VERIFICADO_AUTO', 'CONFIRMADO')) = (\"comprobantes\".\"mp_pago_id\" IS NOT NULL)"
+        },
+        "comprobantes_rechazo_con_motivo": {
+          "name": "comprobantes_rechazo_con_motivo",
+          "value": "(\"comprobantes\".\"estado\" <> 'RECHAZADO') OR (\"comprobantes\".\"motivo_rechazo\" IS NOT NULL)"
+        },
+        "comprobantes_monto_esperado_positivo": {
+          "name": "comprobantes_monto_esperado_positivo",
+          "value": "\"comprobantes\".\"monto_esperado_centavos\" IS NULL OR \"comprobantes\".\"monto_esperado_centavos\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.controles_caja": {
+      "name": "controles_caja",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "declarado_centavos": {
+          "name": "declarado_centavos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "libro_centavos": {
+          "name": "libro_centavos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "diferencia_centavos": {
+          "name": "diferencia_centavos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ajuste_asiento_id": {
+          "name": "ajuste_asiento_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "motivo": {
+          "name": "motivo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "realizado_por_admin_id": {
+          "name": "realizado_por_admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "controles_caja_ajuste_asiento_id_asientos_caja_id_fk": {
+          "name": "controles_caja_ajuste_asiento_id_asientos_caja_id_fk",
+          "tableFrom": "controles_caja",
+          "columnsFrom": [
+            "ajuste_asiento_id"
+          ],
+          "tableTo": "asientos_caja",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "controles_caja_realizado_por_admin_id_admins_id_fk": {
+          "name": "controles_caja_realizado_por_admin_id_admins_id_fk",
+          "tableFrom": "controles_caja",
+          "columnsFrom": [
+            "realizado_por_admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.cuentas_caja": {
+      "name": "cuentas_caja",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "codigo": {
+          "name": "codigo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "tipo_cuenta",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "admin_id": {
+          "name": "admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "activa": {
+          "name": "activa",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "cuentas_caja_admin_id_admins_id_fk": {
+          "name": "cuentas_caja_admin_id_admins_id_fk",
+          "tableFrom": "cuentas_caja",
+          "columnsFrom": [
+            "admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "cuentas_caja_codigo_unique": {
+          "name": "cuentas_caja_codigo_unique",
+          "columns": [
+            "codigo"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "cuentas_efectivo_con_admin": {
+          "name": "cuentas_efectivo_con_admin",
+          "value": "(\"cuentas_caja\".\"admin_id\" IS NULL) OR (\"cuentas_caja\".\"tipo\" = 'ACTIVO')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.entradas": {
+      "name": "entradas",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "compra_id": {
+          "name": "compra_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fiesta_id": {
+          "name": "fiesta_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo_id": {
+          "name": "tipo_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dni": {
+          "name": "dni",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "codigo": {
+          "name": "codigo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "estado": {
+          "name": "estado",
+          "type": "estado_entrada",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDIENTE_PAGO'"
+        },
+        "usada_en": {
+          "name": "usada_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "usada_por": {
+          "name": "usada_por",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "entradas_fiesta": {
+          "name": "entradas_fiesta",
+          "columns": [
+            {
+              "expression": "fiesta_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "estado",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "entradas_compra_id_compras_entradas_id_fk": {
+          "name": "entradas_compra_id_compras_entradas_id_fk",
+          "tableFrom": "entradas",
+          "columnsFrom": [
+            "compra_id"
+          ],
+          "tableTo": "compras_entradas",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "entradas_fiesta_id_fiestas_id_fk": {
+          "name": "entradas_fiesta_id_fiestas_id_fk",
+          "tableFrom": "entradas",
+          "columnsFrom": [
+            "fiesta_id"
+          ],
+          "tableTo": "fiestas",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "entradas_tipo_id_tipos_entrada_id_fk": {
+          "name": "entradas_tipo_id_tipos_entrada_id_fk",
+          "tableFrom": "entradas",
+          "columnsFrom": [
+            "tipo_id"
+          ],
+          "tableTo": "tipos_entrada",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "entradas_codigo_unique": {
+          "name": "entradas_codigo_unique",
+          "columns": [
+            "codigo"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "entradas_usada_con_hora": {
+          "name": "entradas_usada_con_hora",
+          "value": "(\"entradas\".\"estado\" = 'USADA') = (\"entradas\".\"usada_en\" IS NOT NULL)"
+        },
+        "entradas_dni_valido": {
+          "name": "entradas_dni_valido",
+          "value": "\"entradas\".\"dni\" ~ '^[1-9][0-9]{6,7}$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.entradas_mercado_pago": {
+      "name": "entradas_mercado_pago",
+      "schema": "",
+      "columns": {
+        "mp_pago_id": {
+          "name": "mp_pago_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "e2e_id": {
+          "name": "e2e_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "monto_centavos": {
+          "name": "monto_centavos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fecha": {
+          "name": "fecha",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cuit_pagador": {
+          "name": "cuit_pagador",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "entradas_mp_e2e": {
+          "name": "entradas_mp_e2e",
+          "columns": [
+            {
+              "expression": "e2e_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "entradas_mp_monto_positivo": {
+          "name": "entradas_mp_monto_positivo",
+          "value": "\"entradas_mercado_pago\".\"monto_centavos\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.fiestas": {
+      "name": "fiestas",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fecha_hora": {
+          "name": "fecha_hora",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lugar": {
+          "name": "lugar",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "estado": {
+          "name": "estado",
+          "type": "estado_fiesta",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'A_LA_VENTA'"
+        },
+        "token_puerta": {
+          "name": "token_puerta",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "creada_por_admin_id": {
+          "name": "creada_por_admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "fiestas_creada_por_admin_id_admins_id_fk": {
+          "name": "fiestas_creada_por_admin_id_admins_id_fk",
+          "tableFrom": "fiestas",
+          "columnsFrom": [
+            "creada_por_admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "fiestas_tokenPuerta_unique": {
+          "name": "fiestas_tokenPuerta_unique",
+          "columns": [
+            "token_puerta"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.gasto_items": {
+      "name": "gasto_items",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "gasto_id": {
+          "name": "gasto_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descripcion": {
+          "name": "descripcion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cantidad": {
+          "name": "cantidad",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "categoria": {
+          "name": "categoria",
+          "type": "categoria_gasto",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subtotal_centavos": {
+          "name": "subtotal_centavos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "gasto_items_gasto": {
+          "name": "gasto_items_gasto",
+          "columns": [
+            {
+              "expression": "gasto_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "gasto_items_gasto_id_gastos_id_fk": {
+          "name": "gasto_items_gasto_id_gastos_id_fk",
+          "tableFrom": "gasto_items",
+          "columnsFrom": [
+            "gasto_id"
+          ],
+          "tableTo": "gastos",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "gasto_items_subtotal_positivo": {
+          "name": "gasto_items_subtotal_positivo",
+          "value": "\"gasto_items\".\"subtotal_centavos\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.gastos": {
+      "name": "gastos",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "fecha": {
+          "name": "fecha",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "proveedor": {
+          "name": "proveedor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descripcion": {
+          "name": "descripcion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total_centavos": {
+          "name": "total_centavos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cuenta_origen_codigo": {
+          "name": "cuenta_origen_codigo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cocina_id": {
+          "name": "cocina_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sabado_id": {
+          "name": "sabado_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "origen_carga": {
+          "name": "origen_carga",
+          "type": "origen_carga",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "registrado_por_admin_id": {
+          "name": "registrado_por_admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "asiento_id": {
+          "name": "asiento_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "estado": {
+          "name": "estado",
+          "type": "estado_registro",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'CONFIRMADO'"
+        },
+        "anulado_en": {
+          "name": "anulado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "anulado_por_admin_id": {
+          "name": "anulado_por_admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "motivo_anulacion": {
+          "name": "motivo_anulacion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "anulacion_asiento_id": {
+          "name": "anulacion_asiento_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "gastos_cocina": {
+          "name": "gastos_cocina",
+          "columns": [
+            {
+              "expression": "cocina_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "gastos_fecha": {
+          "name": "gastos_fecha",
+          "columns": [
+            {
+              "expression": "fecha",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "gastos_cocina_id_cocinas_id_fk": {
+          "name": "gastos_cocina_id_cocinas_id_fk",
+          "tableFrom": "gastos",
+          "columnsFrom": [
+            "cocina_id"
+          ],
+          "tableTo": "cocinas",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "gastos_sabado_id_sabados_id_fk": {
+          "name": "gastos_sabado_id_sabados_id_fk",
+          "tableFrom": "gastos",
+          "columnsFrom": [
+            "sabado_id"
+          ],
+          "tableTo": "sabados",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "gastos_registrado_por_admin_id_admins_id_fk": {
+          "name": "gastos_registrado_por_admin_id_admins_id_fk",
+          "tableFrom": "gastos",
+          "columnsFrom": [
+            "registrado_por_admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "gastos_asiento_id_asientos_caja_id_fk": {
+          "name": "gastos_asiento_id_asientos_caja_id_fk",
+          "tableFrom": "gastos",
+          "columnsFrom": [
+            "asiento_id"
+          ],
+          "tableTo": "asientos_caja",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "gastos_anulado_por_admin_id_admins_id_fk": {
+          "name": "gastos_anulado_por_admin_id_admins_id_fk",
+          "tableFrom": "gastos",
+          "columnsFrom": [
+            "anulado_por_admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "gastos_anulacion_asiento_id_asientos_caja_id_fk": {
+          "name": "gastos_anulacion_asiento_id_asientos_caja_id_fk",
+          "tableFrom": "gastos",
+          "columnsFrom": [
+            "anulacion_asiento_id"
+          ],
+          "tableTo": "asientos_caja",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "gastos_asientoId_unique": {
+          "name": "gastos_asientoId_unique",
+          "columns": [
+            "asiento_id"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "gastos_total_positivo": {
+          "name": "gastos_total_positivo",
+          "value": "\"gastos\".\"total_centavos\" > 0"
+        },
+        "gastos_anulacion_coherente": {
+          "name": "gastos_anulacion_coherente",
+          "value": "(\"gastos\".\"estado\" = 'ANULADO') = (\"gastos\".\"anulado_en\" IS NOT NULL AND \"gastos\".\"motivo_anulacion\" IS NOT NULL AND \"gastos\".\"anulacion_asiento_id\" IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.jugadores": {
+      "name": "jugadores",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "apellido": {
+          "name": "apellido",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dni": {
+          "name": "dni",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "telefono": {
+          "name": "telefono",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "camada": {
+          "name": "camada",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "estado": {
+          "name": "estado",
+          "type": "estado_jugador",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ACTIVO'"
+        },
+        "baja_en": {
+          "name": "baja_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "eliminado_en": {
+          "name": "eliminado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "jugadores_dni": {
+          "name": "jugadores_dni",
+          "columns": [
+            {
+              "expression": "dni",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "jugadores_estado": {
+          "name": "jugadores_estado",
+          "columns": [
+            {
+              "expression": "estado",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "jugadores_datos_segun_estado": {
+          "name": "jugadores_datos_segun_estado",
+          "value": "CASE WHEN \"jugadores\".\"estado\" = 'ELIMINADO'\n        THEN \"jugadores\".\"nombre\" IS NULL AND \"jugadores\".\"apellido\" IS NULL AND \"jugadores\".\"dni\" IS NULL AND \"jugadores\".\"telefono\" IS NULL AND \"jugadores\".\"email\" IS NULL AND \"jugadores\".\"eliminado_en\" IS NOT NULL\n        ELSE \"jugadores\".\"nombre\" IS NOT NULL AND \"jugadores\".\"apellido\" IS NOT NULL AND \"jugadores\".\"dni\" IS NOT NULL END"
+        },
+        "jugadores_dni_valido": {
+          "name": "jugadores_dni_valido",
+          "value": "\"jugadores\".\"dni\" IS NULL OR \"jugadores\".\"dni\" ~ '^[1-9][0-9]{6,7}$'"
+        },
+        "jugadores_baja_con_fecha": {
+          "name": "jugadores_baja_con_fecha",
+          "value": "(\"jugadores\".\"estado\" = 'BAJA') = (\"jugadores\".\"baja_en\" IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.movimientos_caja": {
+      "name": "movimientos_caja",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "asiento_id": {
+          "name": "asiento_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cuenta_id": {
+          "name": "cuenta_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "monto_centavos": {
+          "name": "monto_centavos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "movimientos_asiento": {
+          "name": "movimientos_asiento",
+          "columns": [
+            {
+              "expression": "asiento_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "movimientos_cuenta": {
+          "name": "movimientos_cuenta",
+          "columns": [
+            {
+              "expression": "cuenta_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "movimientos_caja_asiento_id_asientos_caja_id_fk": {
+          "name": "movimientos_caja_asiento_id_asientos_caja_id_fk",
+          "tableFrom": "movimientos_caja",
+          "columnsFrom": [
+            "asiento_id"
+          ],
+          "tableTo": "asientos_caja",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "movimientos_caja_cuenta_id_cuentas_caja_id_fk": {
+          "name": "movimientos_caja_cuenta_id_cuentas_caja_id_fk",
+          "tableFrom": "movimientos_caja",
+          "columnsFrom": [
+            "cuenta_id"
+          ],
+          "tableTo": "cuentas_caja",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "movimientos_monto_no_cero": {
+          "name": "movimientos_monto_no_cero",
+          "value": "\"movimientos_caja\".\"monto_centavos\" <> 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.movimientos_cocina": {
+      "name": "movimientos_cocina",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "cocina_id": {
+          "name": "cocina_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "tipo_movimiento_cocina",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "monto_centavos": {
+          "name": "monto_centavos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "medio": {
+          "name": "medio",
+          "type": "medio_pago",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nota": {
+          "name": "nota",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "registrado_por_admin_id": {
+          "name": "registrado_por_admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "asiento_id": {
+          "name": "asiento_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "estado": {
+          "name": "estado",
+          "type": "estado_registro",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'CONFIRMADO'"
+        },
+        "anulado_en": {
+          "name": "anulado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "anulado_por_admin_id": {
+          "name": "anulado_por_admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "motivo_anulacion": {
+          "name": "motivo_anulacion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "anulacion_asiento_id": {
+          "name": "anulacion_asiento_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "movimientos_cocina_cocina": {
+          "name": "movimientos_cocina_cocina",
+          "columns": [
+            {
+              "expression": "cocina_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "movimientos_cocina_cocina_id_cocinas_id_fk": {
+          "name": "movimientos_cocina_cocina_id_cocinas_id_fk",
+          "tableFrom": "movimientos_cocina",
+          "columnsFrom": [
+            "cocina_id"
+          ],
+          "tableTo": "cocinas",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "movimientos_cocina_registrado_por_admin_id_admins_id_fk": {
+          "name": "movimientos_cocina_registrado_por_admin_id_admins_id_fk",
+          "tableFrom": "movimientos_cocina",
+          "columnsFrom": [
+            "registrado_por_admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "movimientos_cocina_asiento_id_asientos_caja_id_fk": {
+          "name": "movimientos_cocina_asiento_id_asientos_caja_id_fk",
+          "tableFrom": "movimientos_cocina",
+          "columnsFrom": [
+            "asiento_id"
+          ],
+          "tableTo": "asientos_caja",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "movimientos_cocina_anulado_por_admin_id_admins_id_fk": {
+          "name": "movimientos_cocina_anulado_por_admin_id_admins_id_fk",
+          "tableFrom": "movimientos_cocina",
+          "columnsFrom": [
+            "anulado_por_admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "movimientos_cocina_anulacion_asiento_id_asientos_caja_id_fk": {
+          "name": "movimientos_cocina_anulacion_asiento_id_asientos_caja_id_fk",
+          "tableFrom": "movimientos_cocina",
+          "columnsFrom": [
+            "anulacion_asiento_id"
+          ],
+          "tableTo": "asientos_caja",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "movimientos_cocina_asientoId_unique": {
+          "name": "movimientos_cocina_asientoId_unique",
+          "columns": [
+            "asiento_id"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "movimientos_cocina_monto_positivo": {
+          "name": "movimientos_cocina_monto_positivo",
+          "value": "\"movimientos_cocina\".\"monto_centavos\" > 0"
+        },
+        "movimientos_cocina_anulacion_coherente": {
+          "name": "movimientos_cocina_anulacion_coherente",
+          "value": "(\"movimientos_cocina\".\"estado\" = 'ANULADO') = (\"movimientos_cocina\".\"anulado_en\" IS NOT NULL AND \"movimientos_cocina\".\"motivo_anulacion\" IS NOT NULL AND \"movimientos_cocina\".\"anulacion_asiento_id\" IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.pagos": {
+      "name": "pagos",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "origen": {
+          "name": "origen",
+          "type": "origen_pago",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "monto_centavos": {
+          "name": "monto_centavos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "medio": {
+          "name": "medio",
+          "type": "medio_pago",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fecha": {
+          "name": "fecha",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sabado_id": {
+          "name": "sabado_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nombre_pagador": {
+          "name": "nombre_pagador",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "camada_pagador": {
+          "name": "camada_pagador",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nota": {
+          "name": "nota",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "jugador_id": {
+          "name": "jugador_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recibido_por_admin_id": {
+          "name": "recibido_por_admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "registrado_por_admin_id": {
+          "name": "registrado_por_admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "asiento_id": {
+          "name": "asiento_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "estado": {
+          "name": "estado",
+          "type": "estado_registro",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'CONFIRMADO'"
+        },
+        "anulado_en": {
+          "name": "anulado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "anulado_por_admin_id": {
+          "name": "anulado_por_admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "motivo_anulacion": {
+          "name": "motivo_anulacion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "anulacion_asiento_id": {
+          "name": "anulacion_asiento_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "pagos_sabado": {
+          "name": "pagos_sabado",
+          "columns": [
+            {
+              "expression": "sabado_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "pagos_fecha": {
+          "name": "pagos_fecha",
+          "columns": [
+            {
+              "expression": "fecha",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "pagos_jugador": {
+          "name": "pagos_jugador",
+          "columns": [
+            {
+              "expression": "jugador_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "pagos_sabado_id_sabados_id_fk": {
+          "name": "pagos_sabado_id_sabados_id_fk",
+          "tableFrom": "pagos",
+          "columnsFrom": [
+            "sabado_id"
+          ],
+          "tableTo": "sabados",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "pagos_jugador_id_jugadores_id_fk": {
+          "name": "pagos_jugador_id_jugadores_id_fk",
+          "tableFrom": "pagos",
+          "columnsFrom": [
+            "jugador_id"
+          ],
+          "tableTo": "jugadores",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "pagos_recibido_por_admin_id_admins_id_fk": {
+          "name": "pagos_recibido_por_admin_id_admins_id_fk",
+          "tableFrom": "pagos",
+          "columnsFrom": [
+            "recibido_por_admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "pagos_registrado_por_admin_id_admins_id_fk": {
+          "name": "pagos_registrado_por_admin_id_admins_id_fk",
+          "tableFrom": "pagos",
+          "columnsFrom": [
+            "registrado_por_admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "pagos_asiento_id_asientos_caja_id_fk": {
+          "name": "pagos_asiento_id_asientos_caja_id_fk",
+          "tableFrom": "pagos",
+          "columnsFrom": [
+            "asiento_id"
+          ],
+          "tableTo": "asientos_caja",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "pagos_anulado_por_admin_id_admins_id_fk": {
+          "name": "pagos_anulado_por_admin_id_admins_id_fk",
+          "tableFrom": "pagos",
+          "columnsFrom": [
+            "anulado_por_admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "pagos_anulacion_asiento_id_asientos_caja_id_fk": {
+          "name": "pagos_anulacion_asiento_id_asientos_caja_id_fk",
+          "tableFrom": "pagos",
+          "columnsFrom": [
+            "anulacion_asiento_id"
+          ],
+          "tableTo": "asientos_caja",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "pagos_asientoId_unique": {
+          "name": "pagos_asientoId_unique",
+          "columns": [
+            "asiento_id"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "pagos_monto_positivo": {
+          "name": "pagos_monto_positivo",
+          "value": "\"pagos\".\"monto_centavos\" > 0"
+        },
+        "pagos_efectivo_con_receptor": {
+          "name": "pagos_efectivo_con_receptor",
+          "value": "(\"pagos\".\"medio\" <> 'EFECTIVO') OR (\"pagos\".\"recibido_por_admin_id\" IS NOT NULL)"
+        },
+        "pagos_invitado_con_sabado": {
+          "name": "pagos_invitado_con_sabado",
+          "value": "(\"pagos\".\"origen\" <> 'INVITADO') OR (\"pagos\".\"sabado_id\" IS NOT NULL)"
+        },
+        "pagos_cuota_con_jugador": {
+          "name": "pagos_cuota_con_jugador",
+          "value": "(\"pagos\".\"origen\" <> 'CUOTA') OR (\"pagos\".\"jugador_id\" IS NOT NULL)"
+        },
+        "pagos_anulacion_coherente": {
+          "name": "pagos_anulacion_coherente",
+          "value": "(\"pagos\".\"estado\" = 'ANULADO') = (\"pagos\".\"anulado_en\" IS NOT NULL AND \"pagos\".\"motivo_anulacion\" IS NOT NULL AND \"pagos\".\"anulacion_asiento_id\" IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.parametros": {
+      "name": "parametros",
+      "schema": "",
+      "columns": {
+        "clave": {
+          "name": "clave",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "valor": {
+          "name": "valor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actualizado_por_admin_id": {
+          "name": "actualizado_por_admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "parametros_actualizado_por_admin_id_admins_id_fk": {
+          "name": "parametros_actualizado_por_admin_id_admins_id_fk",
+          "tableFrom": "parametros",
+          "columnsFrom": [
+            "actualizado_por_admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.periodos_cuota": {
+      "name": "periodos_cuota",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "anio": {
+          "name": "anio",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mes": {
+          "name": "mes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "monto_centavos": {
+          "name": "monto_centavos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nota": {
+          "name": "nota",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "abierto_por_admin_id": {
+          "name": "abierto_por_admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "periodos_anio_mes": {
+          "name": "periodos_anio_mes",
+          "columns": [
+            {
+              "expression": "anio",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "mes",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "periodos_cuota_abierto_por_admin_id_admins_id_fk": {
+          "name": "periodos_cuota_abierto_por_admin_id_admins_id_fk",
+          "tableFrom": "periodos_cuota",
+          "columnsFrom": [
+            "abierto_por_admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "periodos_mes_valido": {
+          "name": "periodos_mes_valido",
+          "value": "\"periodos_cuota\".\"mes\" BETWEEN 1 AND 12"
+        },
+        "periodos_anio_valido": {
+          "name": "periodos_anio_valido",
+          "value": "\"periodos_cuota\".\"anio\" BETWEEN 2026 AND 2100"
+        },
+        "periodos_monto_positivo": {
+          "name": "periodos_monto_positivo",
+          "value": "\"periodos_cuota\".\"monto_centavos\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.sabados": {
+      "name": "sabados",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "fecha": {
+          "name": "fecha",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "es_local": {
+          "name": "es_local",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "notas": {
+          "name": "notas",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "sabados_fecha_unique": {
+          "name": "sabados_fecha_unique",
+          "columns": [
+            "fecha"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sesiones": {
+      "name": "sesiones",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "admin_id": {
+          "name": "admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "creada_en": {
+          "name": "creada_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "expira_en": {
+          "name": "expira_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revocada_en": {
+          "name": "revocada_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ip": {
+          "name": "ip",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "navegador": {
+          "name": "navegador",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "sesiones_admin": {
+          "name": "sesiones_admin",
+          "columns": [
+            {
+              "expression": "admin_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "sesiones_admin_id_admins_id_fk": {
+          "name": "sesiones_admin_id_admins_id_fk",
+          "tableFrom": "sesiones",
+          "columnsFrom": [
+            "admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "sesiones_tokenHash_unique": {
+          "name": "sesiones_tokenHash_unique",
+          "columns": [
+            "token_hash"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.tickets": {
+      "name": "tickets",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "cocina_id": {
+          "name": "cocina_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "archivo_id": {
+          "name": "archivo_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "estado": {
+          "name": "estado",
+          "type": "estado_ticket",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lectura_ia": {
+          "name": "lectura_ia",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "motivo_revision": {
+          "name": "motivo_revision",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gasto_id": {
+          "name": "gasto_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cuenta_origen_codigo": {
+          "name": "cuenta_origen_codigo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subido_por_admin_id": {
+          "name": "subido_por_admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resuelto_por_admin_id": {
+          "name": "resuelto_por_admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "tickets_cocina": {
+          "name": "tickets_cocina",
+          "columns": [
+            {
+              "expression": "cocina_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "tickets_estado": {
+          "name": "tickets_estado",
+          "columns": [
+            {
+              "expression": "estado",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "tickets_cocina_id_cocinas_id_fk": {
+          "name": "tickets_cocina_id_cocinas_id_fk",
+          "tableFrom": "tickets",
+          "columnsFrom": [
+            "cocina_id"
+          ],
+          "tableTo": "cocinas",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "tickets_archivo_id_archivos_id_fk": {
+          "name": "tickets_archivo_id_archivos_id_fk",
+          "tableFrom": "tickets",
+          "columnsFrom": [
+            "archivo_id"
+          ],
+          "tableTo": "archivos",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "tickets_gasto_id_gastos_id_fk": {
+          "name": "tickets_gasto_id_gastos_id_fk",
+          "tableFrom": "tickets",
+          "columnsFrom": [
+            "gasto_id"
+          ],
+          "tableTo": "gastos",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "tickets_subido_por_admin_id_admins_id_fk": {
+          "name": "tickets_subido_por_admin_id_admins_id_fk",
+          "tableFrom": "tickets",
+          "columnsFrom": [
+            "subido_por_admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "tickets_resuelto_por_admin_id_admins_id_fk": {
+          "name": "tickets_resuelto_por_admin_id_admins_id_fk",
+          "tableFrom": "tickets",
+          "columnsFrom": [
+            "resuelto_por_admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "tickets_registrado_con_gasto": {
+          "name": "tickets_registrado_con_gasto",
+          "value": "(\"tickets\".\"estado\" = 'REGISTRADO') = (\"tickets\".\"gasto_id\" IS NOT NULL)"
+        },
+        "tickets_con_destino": {
+          "name": "tickets_con_destino",
+          "value": "(\"tickets\".\"cocina_id\" IS NOT NULL) <> (\"tickets\".\"cuenta_origen_codigo\" IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.tipos_entrada": {
+      "name": "tipos_entrada",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "fiesta_id": {
+          "name": "fiesta_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "precio_centavos": {
+          "name": "precio_centavos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_venta": {
+          "name": "token_venta",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "orden": {
+          "name": "orden",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "tipos_entrada_fiesta_nombre": {
+          "name": "tipos_entrada_fiesta_nombre",
+          "columns": [
+            {
+              "expression": "fiesta_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "nombre",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "tipos_entrada_fiesta_id_fiestas_id_fk": {
+          "name": "tipos_entrada_fiesta_id_fiestas_id_fk",
+          "tableFrom": "tipos_entrada",
+          "columnsFrom": [
+            "fiesta_id"
+          ],
+          "tableTo": "fiestas",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "tipos_entrada_tokenVenta_unique": {
+          "name": "tipos_entrada_tokenVenta_unique",
+          "columns": [
+            "token_venta"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "tipos_entrada_precio_positivo": {
+          "name": "tipos_entrada_precio_positivo",
+          "value": "\"tipos_entrada\".\"precio_centavos\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.transferencias_recibidas": {
+      "name": "transferencias_recibidas",
+      "schema": "",
+      "columns": {
+        "mp_pago_id": {
+          "name": "mp_pago_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "e2e_id": {
+          "name": "e2e_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "monto_centavos": {
+          "name": "monto_centavos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fecha": {
+          "name": "fecha",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cuit_pagador": {
+          "name": "cuit_pagador",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dni_pagador": {
+          "name": "dni_pagador",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "estado": {
+          "name": "estado",
+          "type": "estado_transferencia",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resolucion": {
+          "name": "resolucion",
+          "type": "resolucion_transferencia",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pago_id": {
+          "name": "pago_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "jugador_sugerido_id": {
+          "name": "jugador_sugerido_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "motivo_revision": {
+          "name": "motivo_revision",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nota": {
+          "name": "nota",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resuelto_por_admin_id": {
+          "name": "resuelto_por_admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resuelto_en": {
+          "name": "resuelto_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "transferencias_estado": {
+          "name": "transferencias_estado",
+          "columns": [
+            {
+              "expression": "estado",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "fecha",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "transferencias_recibidas_pago_id_pagos_id_fk": {
+          "name": "transferencias_recibidas_pago_id_pagos_id_fk",
+          "tableFrom": "transferencias_recibidas",
+          "columnsFrom": [
+            "pago_id"
+          ],
+          "tableTo": "pagos",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "transferencias_recibidas_jugador_sugerido_id_jugadores_id_fk": {
+          "name": "transferencias_recibidas_jugador_sugerido_id_jugadores_id_fk",
+          "tableFrom": "transferencias_recibidas",
+          "columnsFrom": [
+            "jugador_sugerido_id"
+          ],
+          "tableTo": "jugadores",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "transferencias_recibidas_resuelto_por_admin_id_admins_id_fk": {
+          "name": "transferencias_recibidas_resuelto_por_admin_id_admins_id_fk",
+          "tableFrom": "transferencias_recibidas",
+          "columnsFrom": [
+            "resuelto_por_admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "transferencias_recibidas_pagoId_unique": {
+          "name": "transferencias_recibidas_pagoId_unique",
+          "columns": [
+            "pago_id"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "transferencias_monto_positivo": {
+          "name": "transferencias_monto_positivo",
+          "value": "\"transferencias_recibidas\".\"monto_centavos\" > 0"
+        },
+        "transferencias_revisar_sin_resolucion": {
+          "name": "transferencias_revisar_sin_resolucion",
+          "value": "(\"transferencias_recibidas\".\"estado\" = 'REVISAR') = (\"transferencias_recibidas\".\"resolucion\" IS NULL)"
+        },
+        "transferencias_pago_segun_resolucion": {
+          "name": "transferencias_pago_segun_resolucion",
+          "value": "(\"transferencias_recibidas\".\"resolucion\" IN ('CUOTA_AUTO', 'CUOTA_MANUAL', 'OTRO_INGRESO')) = (\"transferencias_recibidas\".\"pago_id\" IS NOT NULL)"
+        },
+        "transferencias_confirmada_es_auto": {
+          "name": "transferencias_confirmada_es_auto",
+          "value": "(\"transferencias_recibidas\".\"estado\" = 'CONFIRMADA') = (\"transferencias_recibidas\".\"resolucion\" IS NOT DISTINCT FROM 'CUOTA_AUTO')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.traspasos_efectivo": {
+      "name": "traspasos_efectivo",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "de_admin_id": {
+          "name": "de_admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "para_admin_id": {
+          "name": "para_admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "monto_centavos": {
+          "name": "monto_centavos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nota": {
+          "name": "nota",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "estado": {
+          "name": "estado",
+          "type": "estado_traspaso",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDIENTE'"
+        },
+        "asiento_id": {
+          "name": "asiento_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resuelto_en": {
+          "name": "resuelto_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "traspasos_para": {
+          "name": "traspasos_para",
+          "columns": [
+            {
+              "expression": "para_admin_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "estado",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "traspasos_de": {
+          "name": "traspasos_de",
+          "columns": [
+            {
+              "expression": "de_admin_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "estado",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "traspasos_efectivo_de_admin_id_admins_id_fk": {
+          "name": "traspasos_efectivo_de_admin_id_admins_id_fk",
+          "tableFrom": "traspasos_efectivo",
+          "columnsFrom": [
+            "de_admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "traspasos_efectivo_para_admin_id_admins_id_fk": {
+          "name": "traspasos_efectivo_para_admin_id_admins_id_fk",
+          "tableFrom": "traspasos_efectivo",
+          "columnsFrom": [
+            "para_admin_id"
+          ],
+          "tableTo": "admins",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "traspasos_efectivo_asiento_id_asientos_caja_id_fk": {
+          "name": "traspasos_efectivo_asiento_id_asientos_caja_id_fk",
+          "tableFrom": "traspasos_efectivo",
+          "columnsFrom": [
+            "asiento_id"
+          ],
+          "tableTo": "asientos_caja",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "traspasos_efectivo_asientoId_unique": {
+          "name": "traspasos_efectivo_asientoId_unique",
+          "columns": [
+            "asiento_id"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "traspasos_monto_positivo": {
+          "name": "traspasos_monto_positivo",
+          "value": "\"traspasos_efectivo\".\"monto_centavos\" > 0"
+        },
+        "traspasos_entre_distintos": {
+          "name": "traspasos_entre_distintos",
+          "value": "\"traspasos_efectivo\".\"de_admin_id\" <> \"traspasos_efectivo\".\"para_admin_id\""
+        },
+        "traspasos_confirmado_con_asiento": {
+          "name": "traspasos_confirmado_con_asiento",
+          "value": "(\"traspasos_efectivo\".\"estado\" = 'CONFIRMADO') = (\"traspasos_efectivo\".\"asiento_id\" IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.categoria_gasto": {
+      "name": "categoria_gasto",
+      "schema": "public",
+      "values": [
+        "CARNE",
+        "BEBIDAS",
+        "INSUMOS",
+        "OTROS"
+      ]
+    },
+    "public.destino_comprobante": {
+      "name": "destino_comprobante",
+      "schema": "public",
+      "values": [
+        "CUOTA",
+        "ENTRADA_FIESTA"
+      ]
+    },
+    "public.estado_cargo": {
+      "name": "estado_cargo",
+      "schema": "public",
+      "values": [
+        "PENDIENTE",
+        "PAGADO",
+        "ANULADO"
+      ]
+    },
+    "public.estado_cocina": {
+      "name": "estado_cocina",
+      "schema": "public",
+      "values": [
+        "ABIERTA",
+        "CERRADA"
+      ]
+    },
+    "public.estado_compra_entradas": {
+      "name": "estado_compra_entradas",
+      "schema": "public",
+      "values": [
+        "PENDIENTE_PAGO",
+        "PAGADA",
+        "ANULADA"
+      ]
+    },
+    "public.estado_comprobante": {
+      "name": "estado_comprobante",
+      "schema": "public",
+      "values": [
+        "VERIFICADO_AUTO",
+        "REVISAR",
+        "CONFIRMADO",
+        "RECHAZADO"
+      ]
+    },
+    "public.estado_entrada": {
+      "name": "estado_entrada",
+      "schema": "public",
+      "values": [
+        "PENDIENTE_PAGO",
+        "VALIDA",
+        "USADA",
+        "ANULADA"
+      ]
+    },
+    "public.estado_fiesta": {
+      "name": "estado_fiesta",
+      "schema": "public",
+      "values": [
+        "A_LA_VENTA",
+        "VENTA_CERRADA"
+      ]
+    },
+    "public.estado_jugador": {
+      "name": "estado_jugador",
+      "schema": "public",
+      "values": [
+        "ACTIVO",
+        "BAJA",
+        "ELIMINADO"
+      ]
+    },
+    "public.estado_registro": {
+      "name": "estado_registro",
+      "schema": "public",
+      "values": [
+        "CONFIRMADO",
+        "ANULADO"
+      ]
+    },
+    "public.estado_ticket": {
+      "name": "estado_ticket",
+      "schema": "public",
+      "values": [
+        "REGISTRADO",
+        "REVISAR",
+        "DESCARTADO"
+      ]
+    },
+    "public.estado_transferencia": {
+      "name": "estado_transferencia",
+      "schema": "public",
+      "values": [
+        "CONFIRMADA",
+        "REVISAR",
+        "RESUELTA"
+      ]
+    },
+    "public.estado_traspaso": {
+      "name": "estado_traspaso",
+      "schema": "public",
+      "values": [
+        "PENDIENTE",
+        "CONFIRMADO",
+        "RECHAZADO",
+        "CANCELADO"
+      ]
+    },
+    "public.medio_pago": {
+      "name": "medio_pago",
+      "schema": "public",
+      "values": [
+        "TRANSFERENCIA",
+        "EFECTIVO"
+      ]
+    },
+    "public.origen_asiento": {
+      "name": "origen_asiento",
+      "schema": "public",
+      "values": [
+        "PAGO",
+        "GASTO",
+        "RENDICION",
+        "ANULACION",
+        "AJUSTE",
+        "ADELANTO"
+      ]
+    },
+    "public.origen_carga": {
+      "name": "origen_carga",
+      "schema": "public",
+      "values": [
+        "IA",
+        "MANUAL"
+      ]
+    },
+    "public.origen_pago": {
+      "name": "origen_pago",
+      "schema": "public",
+      "values": [
+        "CUOTA",
+        "INVITADO",
+        "ENTRADA_FIESTA",
+        "OTRO"
+      ]
+    },
+    "public.resolucion_transferencia": {
+      "name": "resolucion_transferencia",
+      "schema": "public",
+      "values": [
+        "CUOTA_AUTO",
+        "CUOTA_MANUAL",
+        "YA_REGISTRADA",
+        "OTRO_INGRESO",
+        "NO_ES_DEL_PLANTEL"
+      ]
+    },
+    "public.rol_admin": {
+      "name": "rol_admin",
+      "schema": "public",
+      "values": [
+        "DUENO",
+        "ADMIN"
+      ]
+    },
+    "public.tipo_actor": {
+      "name": "tipo_actor",
+      "schema": "public",
+      "values": [
+        "ADMIN",
+        "SISTEMA",
+        "PUBLICO"
+      ]
+    },
+    "public.tipo_cuenta": {
+      "name": "tipo_cuenta",
+      "schema": "public",
+      "values": [
+        "ACTIVO",
+        "INGRESO",
+        "EGRESO"
+      ]
+    },
+    "public.tipo_movimiento_cocina": {
+      "name": "tipo_movimiento_cocina",
+      "schema": "public",
+      "values": [
+        "ADELANTO",
+        "DEVOLUCION",
+        "REINTEGRO",
+        "SOBRANTE_NO_DEVUELTO",
+        "EXCESO_NO_REINTEGRADO"
+      ]
+    }
+  },
+  "schemas": {},
+  "views": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

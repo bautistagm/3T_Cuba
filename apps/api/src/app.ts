@@ -33,6 +33,7 @@ import { rutasMercadoPago } from "./rutas/mercadopago.js";
 import { rutasJugadores } from "./rutas/jugadores.js";
 import { rutasCuotas } from "./rutas/cuotas.js";
 import { rutasTransferencias } from "./rutas/transferencias.js";
+import { rutasFiestas } from "./rutas/fiestas.js";
 import { ErrorMercadoPago } from "./mercadopago/cliente.js";
 import { buscarEntradas } from "./mercadopago/movimientos.js";
 import { crearLectorComprobantesGemini, lectorComprobantesSinIa, type LectorComprobantes } from "./ia/lectorComprobantes.js";
@@ -309,6 +310,7 @@ export async function construirApp(opciones: {
       rutasCaja(api, db, lectorTickets, asistente);
       rutasJugadores(api, db);
       rutasCuotas(api, db);
+      rutasFiestas(api, db, verificacion.buscarEntradas);
       rutasTransferencias(api, db, verificacion.buscarEntradas, config.CLAVE_LECTURA, config.MP_ACCESS_TOKEN !== undefined);
       rutasMercadoPago(api, db, config.MP_ACCESS_TOKEN, verificacion, opciones.fetchMercadoPago);
 

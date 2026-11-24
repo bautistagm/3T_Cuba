@@ -308,6 +308,61 @@ export interface TransferenciaLeida {
   nota: string | null;
 }
 
+export interface FiestaListada {
+  id: string;
+  nombre: string;
+  fechaHora: string;
+  lugar: string | null;
+  estado: "A_LA_VENTA" | "VENTA_CERRADA";
+  vendidas: number;
+  usadas: number;
+  pendientes: number;
+}
+export interface DetalleFiesta {
+  fiesta: { id: string; nombre: string; fechaHora: string; lugar: string | null; estado: "A_LA_VENTA" | "VENTA_CERRADA"; tokenPuerta: string | null };
+  tipos: { id: string; nombre: string; precioCentavos: string; tokenVenta: string }[];
+  entradas: {
+    id: string;
+    compraId: string;
+    tipoId: string;
+    nombre: string;
+    dni: string;
+    estado: "PENDIENTE_PAGO" | "VALIDA" | "USADA" | "ANULADA";
+    usadaEn: string | null;
+    usadaPor: string | null;
+    email: string;
+    telefono: string | null;
+  }[];
+  recaudadoCentavos: string;
+}
+export interface VentaPublica {
+  fiesta: { nombre: string; fechaHora: string; lugar: string | null };
+  tipo: { nombre: string; precioCentavos: string };
+  abierta: boolean;
+  alias: string | null;
+}
+export interface EstadoCompra {
+  codigoConsulta: string;
+  cantidad: number;
+  totalCentavos: string;
+  dniPagador: string;
+  estado: "PENDIENTE_PAGO" | "PAGADA" | "ANULADA";
+  alias: string | null;
+  existente: boolean;
+  fiesta: { nombre: string; fechaHora: string; lugar: string | null };
+  tipo: string;
+  entradas: { nombre: string; dni: string; estado: string; codigo: string | null }[];
+}
+export interface CompraPendiente {
+  id: string;
+  fiesta: string;
+  tipo: string;
+  cantidad: number;
+  dniPagador: string;
+  quienCompra: string;
+  creadaEn: string;
+}
+
 type ItemParaEnviar = { descripcion: string; cantidad?: string; categoria: Categoria; subtotalCentavos: string };
 
 export const api = {
@@ -357,6 +412,19 @@ export const api = {
   transferenciaNoEsDelPlantel: (id: string, nota: string) => pedir<unknown>("POST", `/transferencias/${id}/no-es-del-plantel`, { nota }),
   cambiarMiContrasena: (actual: string, nueva: string) => pedir<unknown>("POST", "/auth/contrasena", { actual, nueva }),
   restablecerContrasena: (adminId: string, nueva: string) => pedir<unknown>("POST", `/admins/${adminId}/contrasena`, { nueva }),
+  fiestas: () => pedir<{ fiestas: FiestaListada[] }>("GET", "/fiestas"),
+  crearFiesta: (datos: { nombre: string; fechaHora: string; lugar?: string; tipos: { nombre: string; precioCentavos: string }[] }) =>
+    pedir<{ fiesta: { id: string } }>("POST", "/fiestas", datos),
+  fiesta: (id: string) => pedir<DetalleFiesta>("GET", `/fiestas/${id}`),
+  ventaFiesta: (id: string, abierta: boolean) => pedir<unknown>("POST", `/fiestas/${id}/venta`, { abierta }),
+  nuevoLinkPuerta: (id: string) => pedir<{ tokenPuerta: string }>("POST", `/fiestas/${id}/link-puerta`),
+  anularCompraEntradas: (id: string) => pedir<unknown>("POST", `/compras-entradas/${id}/anular`),
+  comprasParaTransferencia: (mpPagoId: string) => pedir<{ compras: CompraPendiente[] }>("GET", `/transferencias/${mpPagoId}/compras`),
+  asignarTransferenciaACompra: (mpPagoId: string, compraId: string) => pedir<unknown>("POST", `/transferencias/${mpPagoId}/compra`, { compraId }),
+  ventaPublica: (token: string) => pedir<VentaPublica>("GET", `/publico/venta/${token}`),
+  comprarEntradas: (token: string, datos: { entradas: { nombre: string; dni: string }[]; email: string; telefono?: string }) =>
+    pedir<{ codigoConsulta: string }>("POST", `/publico/venta/${token}/compras`, datos),
+  estadoCompra: (codigo: string) => pedir<EstadoCompra>("GET", `/publico/compras/${codigo}`),
   probarMercadoPago: () => pedir<PruebaMercadoPago>("GET", "/mercadopago/prueba"),
 
   sabadoActual: () => pedir<DetalleSabado>("GET", "/sabados/actual"),

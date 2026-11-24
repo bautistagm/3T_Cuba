@@ -13,6 +13,8 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-route
 import { Instalacion, Login } from "./pantallas/Acceso";
 import { Ajustes } from "./pantallas/Ajustes";
 import { PantallaPagos } from "./pantallas/Pagos";
+import { PantallaFiesta, PantallaFiestas } from "./pantallas/Fiestas";
+import { PaginaComprarEntradas, PaginaMiEntrada } from "./pantallas/Entradas";
 import { PantallaCaja } from "./pantallas/Caja";
 import { PantallaCocina } from "./pantallas/Cocina";
 import { Inicio } from "./pantallas/Inicio";
@@ -52,7 +54,8 @@ function App() {
           <Route path="/sabados/:id" element={<PantallaSabado />} />
           <Route path="/cocinas/:id" element={<PantallaCocina />} />
           <Route path="/pagos" element={<PantallaPagos />} />
-          <Route path="/fiestas" element={<SeccionEnConstruccion titulo="Fiestas" cuando="Llega después de Jugadores y Cuotas." />} />
+          <Route path="/fiestas" element={<PantallaFiestas />} />
+          <Route path="/fiestas/:id" element={<PantallaFiesta />} />
           <Route path="/caja" element={<PantallaCaja />} />
           <Route path="/stock" element={<SeccionEnConstruccion titulo="Stock" cuando="Llega en 2027." />} />
           <Route path="/ajustes" element={<Ajustes />} />
@@ -65,10 +68,12 @@ function App() {
 /** Las páginas públicas (link del responsable) no necesitan sesión. */
 function Raiz() {
   const { pathname } = useLocation();
-  if (pathname.startsWith("/cocina/")) {
+  if (pathname.startsWith("/cocina/") || pathname.startsWith("/entradas/") || pathname.startsWith("/mi-entrada/")) {
     return (
       <Routes>
         <Route path="/cocina/:token" element={<PaginaDelResponsable />} />
+        <Route path="/entradas/:token" element={<PaginaComprarEntradas />} />
+        <Route path="/mi-entrada/:codigo" element={<PaginaMiEntrada />} />
       </Routes>
     );
   }

@@ -1,0 +1,6 @@
+ALTER TYPE "public"."resolucion_transferencia" ADD VALUE 'ENTRADAS_AUTO';--> statement-breakpoint
+ALTER TYPE "public"."resolucion_transferencia" ADD VALUE 'ENTRADAS_MANUAL';--> statement-breakpoint
+ALTER TABLE "transferencias_recibidas" DROP CONSTRAINT "transferencias_pago_segun_resolucion";--> statement-breakpoint
+ALTER TABLE "transferencias_recibidas" DROP CONSTRAINT "transferencias_confirmada_es_auto";--> statement-breakpoint
+ALTER TABLE "transferencias_recibidas" ADD CONSTRAINT "transferencias_pago_segun_resolucion" CHECK ((coalesce("transferencias_recibidas"."resolucion"::text, '') IN ('CUOTA_AUTO', 'CUOTA_MANUAL', 'OTRO_INGRESO', 'ENTRADAS_AUTO', 'ENTRADAS_MANUAL')) = ("transferencias_recibidas"."pago_id" IS NOT NULL));--> statement-breakpoint
+ALTER TABLE "transferencias_recibidas" ADD CONSTRAINT "transferencias_confirmada_es_auto" CHECK (("transferencias_recibidas"."estado" = 'CONFIRMADA') = (coalesce("transferencias_recibidas"."resolucion"::text, '') IN ('CUOTA_AUTO', 'ENTRADAS_AUTO')));

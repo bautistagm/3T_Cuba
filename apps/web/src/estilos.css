@@ -297,3 +297,13 @@ input[type="search"] { width: 100%; }
 .panel .opcion { background: #fff; }
 .fila-admin { flex-wrap: wrap; }
 .fila-admin .datos { flex: 1 1 100%; }
+
+/* Fiestas */
+.enlace-fila { text-decoration: none; color: inherit; flex: 1; min-width: 0; }
+.link-corto { font-size: 12px; color: var(--texto-2); overflow-wrap: anywhere; }
+.fila-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.alias { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px; border-radius: 12px; background: var(--fondo); }
+.alias strong { font-size: 20px; font-family: var(--titulo); }
+.entrada { align-items: center; text-align: center; }
+.qr { width: 240px; max-width: 80vw; margin: 8px auto; background: #fff; padding: 8px; border-radius: 12px; }
+.qr svg { display: block; width: 100%; height: auto; }

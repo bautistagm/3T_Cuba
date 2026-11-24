@@ -84,7 +84,8 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 **Fiestas**
 - **No hay fiestas por defecto.** El dueño crea cada fiesta desde la sección Fiestas.
   - **Obligatorio:** nombre o motivo, fecha y hora, y el precio de cada tipo de entrada (por defecto "Mujer" y "Hombre").
-  - **Opcional:** lugar, cupo total, cupo por tipo y tandas (cada tanda con su precio, cupo y fecha de fin). Sin tandas, cada tipo se vende a un precio único; sin cupo, no hay límite de entradas.
+  - **Opcional:** lugar y tandas (cada tanda con su precio y fecha de fin). Sin tandas, cada tipo se vende a un precio único.
+  - **Sin cupos ni reservas (decisión del dueño, 24/11/2026):** no hay límite de entradas; la entrada es de quien transfiere.
   - Mientras no tenga ventas se puede editar libremente; después, solo el dueño puede cambiar precios futuros.
 - **Un link de venta por tipo de entrada** (uno para mujeres, otro para hombres). Cada link vende solo ese tipo, así se puede difundir cada uno por separado.
 - **Cómo se compra (sin comisiones):** el link muestra el precio y el **alias del plantel**. La persona completa sus datos (con su DNI) y transfiere desde su cuenta. La app reconoce la transferencia por el DNI igual que una cuota; si está todo bien, se registra la persona en la lista de la fiesta y **se le manda la entrada con el QR al email** que cargó. Si hay dudas, queda en "Revisar" y la entrada sale cuando un admin lo confirma.
@@ -94,7 +95,9 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 - **Listas separadas por tipo**: la app muestra los compradores en dos listas (Mujeres / Hombres), con totales de cada una, y se pueden exportar a una planilla con una hoja por tipo.
 - **Puerta desde el celular**: cualquier admin escanea el QR con la cámara desde la app. La pantalla muestra en grande nombre, DNI y tipo, o un aviso rojo si la entrada ya se usó (con la hora y quién la marcó), está anulada o no existe. Cada QR entra una sola vez: si alguien comparte la captura, entra solo el primero.
 - También se puede buscar por nombre o DNI. La lista de la fiesta se descarga al celular antes de abrir la puerta, para que funcione aunque haya mala señal; al volver la conexión se sincroniza.
-- Los jugadores figuran en la lista de puerta sin pagar (la fiesta va incluida en su cuota).
+- **Los jugadores no se registran (decisión del dueño, 24/11/2026):** entran como siempre; en la app solo figuran los invitados que compran entrada.
+- **Puerta sin usuario (decisión del dueño):** cada fiesta tiene un **link de puerta** secreto que el dueño comparte con el plantel. Cualquier jugador lo abre en el navegador del celular (sin instalar nada ni entrar con usuario) y escanea los QR con la cámara. Quién marcó cada entrada se registra con el nombre que escribe al abrir el link. El dueño puede cambiar el link si se filtra.
+- **Varias entradas en una compra:** se cargan todas juntas (cada una con su nombre y DNI) y se pagan con **una sola transferencia** desde la cuenta de quien compra (la primera persona). La app la reconoce por el DNI de quien compra y el total exacto. Si esa persona ya tiene una compra pendiente, la app se la muestra en vez de crear otra.
 - Cada fiesta tiene su resultado: entradas menos gastos.
 
 **Caja**
@@ -189,7 +192,8 @@ Convenciones: `id` UUID; `*_centavos` BIGINT; `creado_en` / `actualizado_en` en 
 - **archivos**: las fotos, guardadas comprimidas en la base (son pocas y chicas).
 
 ### Fiestas
-- **fiestas**: nombre o motivo, fecha y hora, lugar (opcional), cupo (opcional), estado (`BORRADOR` | `A_LA_VENTA` | `CERRADA` | `FINALIZADA`), creada por.
+- **fiestas**: nombre o motivo, fecha y hora, lugar (opcional), estado (`A_LA_VENTA` | `VENTA_CERRADA`), token del link de puerta, creada por.
+- **compras_entradas**: fiesta, tipo, DNI de quien paga, email, teléfono, cantidad, total_centavos, estado (`PENDIENTE_PAGO` | `PAGADA` | `ANULADA`), pago, código para ver el estado.
 - **tipos_entrada**: fiesta, nombre (ej. "Mujer", "Hombre"), precio_centavos (precio único si no hay tandas), cupo (opcional), token del link de venta propio.
 - **tandas** (opcionales): tipo de entrada, nombre, precio_centavos, cupo (opcional), desde, hasta, orden. Si un tipo tiene tandas, manda el precio de la tanda vigente.
 - **entradas**: fiesta, tanda, tipo de entrada, origen (`EXTERNA` | `JUGADOR`), nombre, DNI, email, teléfono, código único, pago, estado (`PENDIENTE_PAGO` | `VALIDA` | `USADA` | `ANULADA`), hora de ingreso y quién la marcó, diferencia cobrada en puerta (si hubo).
@@ -220,7 +224,7 @@ Los jugadores reales se cargan en **febrero de 2027**. Hasta entonces se constru
 | 6 | ✅ Conexión con Mercado Pago | Conexión de solo consulta, prueba con una transferencia real y protecciones (una transferencia confirma un solo pago). **Decisión del dueño (24/11/2026):** la verificación es automática por DNI, sin comprobantes; se termina junto con jugadores y cuotas, que traen la lista de DNIs. |
 | 7 | ✅ Jugadores | Alta, edición, baja, eliminación e importación desde el Formulario de Google con DNI (se usa en febrero). Los admins dan de alta y corrigen contacto; el DNI, la baja, la eliminación y la importación son del dueño. La auditoría registra qué campos cambiaron, sin guardar datos personales. |
 | 8 | ✅ Cuotas y pagos | **8.1** Meses que abre el dueño, cuota de cada jugador, cobro en efectivo (uno o varios meses), anulaciones, quién debe con botón de WhatsApp y alias del plantel. **8.2** Lectura automática de la cuenta cada 10 minutos y al abrir la app, reconocimiento por DNI y "¿De quién es esta transferencia?". Detalle original: **verificación automática por DNI**, bandeja "Revisar" (¿de quién es esta transferencia?), anulaciones y lista de deudores |
-| 9 | Fiestas | Creación, venta por alias con DNI, verificación automática, entradas con QR por email y puerta |
+| 9 | Fiestas | **9.1 ✅** Creación, links de venta, compra pública con DNI, verificación automática y listas. **9.2** Email con el QR desde plantelcuba@gmail.com. **9.3** Puerta: link para escanear desde cualquier celular. **9.4** Tandas. |
 | 10 | Stock y proveedores | 2027 |
 
 Cada etapa termina con: tests pasando, revisión del dueño y prueba en un entorno de prueba antes de pasar a la siguiente.
