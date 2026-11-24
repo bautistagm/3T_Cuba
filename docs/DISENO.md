@@ -85,6 +85,7 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 - **No hay fiestas por defecto.** El dueño crea cada fiesta desde la sección Fiestas.
   - **Obligatorio:** nombre o motivo, fecha y hora, y el precio de cada tipo de entrada (por defecto "Mujer" y "Hombre").
   - **Opcional:** lugar y tandas (cada tanda con su precio y fecha de fin). Sin tandas, cada tipo se vende a un precio único.
+  - **Tandas (24/11/2026, el dueño las pidió como opcionales):** se agregan desde la fiesta, por tipo de entrada. Manda la primera tanda que no terminó; cuando terminan todas, vale el precio del tipo ("precio final"). El precio queda fijo al cargar la compra: si alguien la cargó en una tanda y paga después, paga ese precio (el dueño puede anular compras sin pagar). Una tanda no se edita: se quita (solo si no terminó) y se agrega otra. Las tandas no tienen cupo.
   - **Sin cupos ni reservas (decisión del dueño, 24/11/2026):** no hay límite de entradas; la entrada es de quien transfiere.
   - Mientras no tenga ventas se puede editar libremente; después, solo el dueño puede cambiar precios futuros.
 - **Un link de venta por tipo de entrada** (uno para mujeres, otro para hombres). Cada link vende solo ese tipo, así se puede difundir cada uno por separado.
@@ -198,7 +199,7 @@ Convenciones: `id` UUID; `*_centavos` BIGINT; `creado_en` / `actualizado_en` en 
 - **fiestas**: nombre o motivo, fecha y hora, lugar (opcional), estado (`A_LA_VENTA` | `VENTA_CERRADA`), token del link de puerta, creada por.
 - **compras_entradas**: fiesta, tipo, DNI de quien paga, email, teléfono, cantidad, total_centavos, estado (`PENDIENTE_PAGO` | `PAGADA` | `ANULADA`), pago, código para ver el estado.
 - **tipos_entrada**: fiesta, nombre (ej. "Mujer", "Hombre"), precio_centavos (precio único si no hay tandas), cupo (opcional), token del link de venta propio.
-- **tandas** (opcionales): tipo de entrada, nombre, precio_centavos, cupo (opcional), desde, hasta, orden. Si un tipo tiene tandas, manda el precio de la tanda vigente.
+- **tandas** (opcionales): tipo de entrada, precio_centavos, hasta, creada por. Si un tipo tiene tandas, manda el precio de la primera que no terminó; la compra guarda el precio unitario.
 - **entradas**: fiesta, tanda, tipo de entrada, origen (`EXTERNA` | `JUGADOR`), nombre, DNI, email, teléfono, código único, pago, estado (`PENDIENTE_PAGO` | `VALIDA` | `USADA` | `ANULADA`), hora de ingreso y quién la marcó, diferencia cobrada en puerta (si hubo).
 
 ### Caja y control
@@ -227,7 +228,7 @@ Los jugadores reales se cargan en **febrero de 2027**. Hasta entonces se constru
 | 6 | ✅ Conexión con Mercado Pago | Conexión de solo consulta, prueba con una transferencia real y protecciones (una transferencia confirma un solo pago). **Decisión del dueño (24/11/2026):** la verificación es automática por DNI, sin comprobantes; se termina junto con jugadores y cuotas, que traen la lista de DNIs. |
 | 7 | ✅ Jugadores | Alta, edición, baja, eliminación e importación desde el Formulario de Google con DNI (se usa en febrero). Los admins dan de alta y corrigen contacto; el DNI, la baja, la eliminación y la importación son del dueño. La auditoría registra qué campos cambiaron, sin guardar datos personales. |
 | 8 | ✅ Cuotas y pagos | **8.1** Meses que abre el dueño, cuota de cada jugador, cobro en efectivo (uno o varios meses), anulaciones, quién debe con botón de WhatsApp y alias del plantel. **8.2** Lectura automática de la cuenta cada 10 minutos y al abrir la app, reconocimiento por DNI y "¿De quién es esta transferencia?". Detalle original: **verificación automática por DNI**, bandeja "Revisar" (¿de quién es esta transferencia?), anulaciones y lista de deudores |
-| 9 | Fiestas | **9.1 ✅** Creación, links de venta, compra pública con DNI, verificación automática y listas. **9.2 ✅** Email con el QR desde plantelcuba@gmail.com (se anota junto con el pago y se manda después, con reintentos; el dueño puede reenviar). **9.3 ✅** Puerta: link para escanear desde cualquier celular, con búsqueda a mano y funcionando sin señal. **9.4** Tandas. |
+| 9 | Fiestas | **9.1 ✅** Creación, links de venta, compra pública con DNI, verificación automática y listas. **9.2 ✅** Email con el QR desde plantelcuba@gmail.com (se anota junto con el pago y se manda después, con reintentos; el dueño puede reenviar). **9.3 ✅** Puerta: link para escanear desde cualquier celular, con búsqueda a mano y funcionando sin señal. **9.4 ✅** Tandas opcionales por tipo de entrada. |
 | 10 | Stock y proveedores | 2027 |
 
 Cada etapa termina con: tests pasando, revisión del dueño y prueba en un entorno de prueba antes de pasar a la siguiente.

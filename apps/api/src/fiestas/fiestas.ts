@@ -8,14 +8,14 @@
  * - Cada entrada tiene un código aleatorio (el QR). Se marca usada en la puerta (etapa 9.3).
  */
 import { randomBytes } from "node:crypto";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { normalizarDni } from "@3t/shared";
 import { z } from "zod";
 import { registrarAuditoria, type Actor } from "../auditoria/auditoria.js";
 import { registrarAsiento, type ActorAdmin } from "../caja/libro.js";
 import { aliasDelPlantel } from "../cuotas/cuotas.js";
 import type { BaseDeDatos, Ejecutor, Transaccion } from "../db/cliente.js";
-import { comprasEntradas, entradas, fiestas, pagos, tiposEntrada } from "../db/esquema.js";
+import { comprasEntradas, entradas, fiestas, pagos, tandas, tiposEntrada } from "../db/esquema.js";
 import { ErrorNegocio, noExiste, soloDueno } from "../errores.js";
 import { anotarEmailDeEntradas } from "../email/entradas.js";
 
@@ -113,6 +113,10 @@ export async function detalleFiesta(db: BaseDeDatos, fiestaId: string, actor: Ac
   const [fiesta] = await db.select().from(fiestas).where(eq(fiestas.id, fiestaId)).limit(1);
   if (!fiesta) throw noExiste("La fiesta");
   const tipos = await db.select().from(tiposEntrada).where(eq(tiposEntrada.fiestaId, fiestaId)).orderBy(asc(tiposEntrada.orden));
+  const todasLasTandas = tipos.length
+    ? await db.select().from(tandas).where(inArray(tandas.tipoId, tipos.map((t) => t.id))).orderBy(asc(tandas.hasta))
+    : [];
+  const ahora = new Date();
   const lista = await db
     .select({ e: entradas, email: comprasEntradas.email, telefono: comprasEntradas.telefono })
     .from(entradas)
@@ -134,7 +138,17 @@ export async function detalleFiesta(db: BaseDeDatos, fiestaId: string, actor: Ac
       // El link de puerta lo ve solo el dueño (es quien lo comparte).
       tokenPuerta: actor.rol === "DUENO" ? fiesta.tokenPuerta : null,
     },
-    tipos: tipos.map((t) => ({ id: t.id, nombre: t.nombre, precioCentavos: t.precioCentavos, tokenVenta: t.tokenVenta })),
+    tipos: tipos.map((t) => {
+      const suyas = todasLasTandas.filter((x) => x.tipoId === t.id);
+      return {
+        id: t.id,
+        nombre: t.nombre,
+        precioCentavos: t.precioCentavos,
+        precioVigenteCentavos: suyas.find((x) => x.hasta > ahora)?.precioCentavos ?? t.precioCentavos,
+        tokenVenta: t.tokenVenta,
+        tandas: suyas.map((x) => ({ id: x.id, precioCentavos: x.precioCentavos, hasta: x.hasta.toISOString(), termino: x.hasta <= ahora })),
+      };
+    }),
     entradas: lista.map(({ e, email, telefono }) => ({
       id: e.id,
       compraId: e.compraId,
@@ -149,6 +163,51 @@ export async function detalleFiesta(db: BaseDeDatos, fiestaId: string, actor: Ac
     })),
     recaudadoCentavos: BigInt(recaudado[0]?.total ?? "0"),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Tandas (opcionales): el dueño agrega o quita precios por fecha
+// ---------------------------------------------------------------------------
+
+export const tandaSchema = z.object({
+  precioCentavos: z.coerce.bigint().positive("El precio tiene que ser mayor a cero."),
+  hasta: z.coerce.date({ invalid_type_error: "La fecha no es válida." }),
+});
+
+export async function agregarTanda(db: BaseDeDatos, actor: ActorAdmin, tipoId: string, datos: z.infer<typeof tandaSchema>, ahora = new Date()) {
+  if (actor.rol !== "DUENO") throw soloDueno("cambiar los precios");
+  return db.transaction(async (tx) => {
+    const [fila] = await tx.select({ tipo: tiposEntrada, fiesta: fiestas }).from(tiposEntrada).innerJoin(fiestas, eq(fiestas.id, tiposEntrada.fiestaId)).where(eq(tiposEntrada.id, tipoId)).limit(1);
+    if (!fila) throw noExiste("El tipo de entrada");
+    if (datos.hasta <= ahora) throw new ErrorNegocio(400, "TANDA_PASADA", "La tanda tiene que terminar más adelante.");
+    if (datos.hasta >= fila.fiesta.fechaHora) throw new ErrorNegocio(400, "TANDA_DESPUES_DE_LA_FIESTA", "La tanda tiene que terminar antes de la fiesta.");
+    const [repetida] = await tx.select().from(tandas).where(and(eq(tandas.tipoId, tipoId), eq(tandas.hasta, datos.hasta))).limit(1);
+    if (repetida) throw new ErrorNegocio(409, "TANDA_REPETIDA", "Ya hay una tanda que termina en ese momento.");
+    const [tanda] = await tx.insert(tandas).values({ tipoId, precioCentavos: datos.precioCentavos, hasta: datos.hasta, creadaPorAdminId: actor.adminId }).returning();
+    await registrarAuditoria(tx, actor, {
+      accion: "TANDA_AGREGADA",
+      entidad: "tandas",
+      entidadId: tanda?.id ?? "",
+      despues: { tipoId, precioCentavos: datos.precioCentavos.toString(), hasta: datos.hasta.toISOString() },
+    });
+    return tanda;
+  });
+}
+
+export async function quitarTanda(db: BaseDeDatos, actor: ActorAdmin, tandaId: string, ahora = new Date()) {
+  if (actor.rol !== "DUENO") throw soloDueno("cambiar los precios");
+  return db.transaction(async (tx) => {
+    const [tanda] = await tx.select().from(tandas).where(eq(tandas.id, tandaId)).for("update");
+    if (!tanda) throw noExiste("La tanda");
+    if (tanda.hasta <= ahora) throw new ErrorNegocio(409, "TANDA_TERMINADA", "Esa tanda ya terminó: queda registrada.");
+    await tx.delete(tandas).where(eq(tandas.id, tandaId));
+    await registrarAuditoria(tx, actor, {
+      accion: "TANDA_QUITADA",
+      entidad: "tandas",
+      entidadId: tandaId,
+      antes: { tipoId: tanda.tipoId, precioCentavos: tanda.precioCentavos.toString(), hasta: tanda.hasta.toISOString() },
+    });
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -168,11 +227,23 @@ async function tipoPorToken(db: Ejecutor, tokenVenta: string) {
 
 const ventaAbierta = (fiesta: typeof fiestas.$inferSelect, ahora: Date) => fiesta.estado === "A_LA_VENTA" && fiesta.fechaHora.getTime() + 6 * 3600_000 > ahora.getTime();
 
+/** Precio de hoy: la primera tanda que no terminó; si no hay (o terminaron todas), el precio del tipo. */
+async function precioVigente(db: Ejecutor, tipo: typeof tiposEntrada.$inferSelect, ahora: Date) {
+  const proximas = await db.select().from(tandas).where(and(eq(tandas.tipoId, tipo.id), gt(tandas.hasta, ahora))).orderBy(asc(tandas.hasta));
+  const vigente = proximas[0];
+  return {
+    precioCentavos: vigente?.precioCentavos ?? tipo.precioCentavos,
+    /** Si hay tanda: hasta cuándo vale y cuánto sale después. */
+    tanda: vigente ? { hasta: vigente.hasta.toISOString(), despuesCentavos: proximas[1]?.precioCentavos ?? tipo.precioCentavos } : null,
+  };
+}
+
 export async function fiestaParaComprar(db: BaseDeDatos, tokenVenta: string) {
   const { tipo, fiesta } = await tipoPorToken(db, tokenVenta);
+  const precio = await precioVigente(db, tipo, new Date());
   return {
     fiesta: { nombre: fiesta.nombre, fechaHora: fiesta.fechaHora.toISOString(), lugar: fiesta.lugar },
-    tipo: { nombre: tipo.nombre, precioCentavos: tipo.precioCentavos },
+    tipo: { nombre: tipo.nombre, precioCentavos: precio.precioCentavos, tanda: precio.tanda },
     abierta: ventaAbierta(fiesta, new Date()),
     alias: await aliasDelPlantel(db),
   };
@@ -227,7 +298,8 @@ export async function crearCompra(db: BaseDeDatos, tokenVenta: string, datos: z.
     if (yaTienen.length > 0) {
       throw new ErrorNegocio(409, "YA_TIENE_ENTRADA", `El DNI ${yaTienen.map((y) => y.dni).join(", ")} ya tiene entrada para esta fiesta.`);
     }
-    const total = tipo.precioCentavos * BigInt(validos.length);
+    const { precioCentavos: precio } = await precioVigente(tx, tipo, new Date());
+    const total = precio * BigInt(validos.length);
     const [compra] = await tx
       .insert(comprasEntradas)
       .values({
@@ -237,7 +309,7 @@ export async function crearCompra(db: BaseDeDatos, tokenVenta: string, datos: z.
         email: datos.email,
         telefono: datos.telefono?.trim() || null,
         cantidad: validos.length,
-        precioUnitarioCentavos: tipo.precioCentavos,
+        precioUnitarioCentavos: precio,
         totalCentavos: total,
         codigoConsulta: token(16),
       })

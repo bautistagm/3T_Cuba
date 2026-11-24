@@ -838,6 +838,31 @@ export const comprasEntradas = pgTable(
 
 export const estadoEntrada = pgEnum("estado_entrada", ["PENDIENTE_PAGO", "VALIDA", "USADA", "ANULADA"]);
 
+/**
+ * Tandas (opcionales, etapa 9.4): precios por fecha para un tipo de entrada. Manda la primera tanda que no terminó;
+ * cuando terminan todas, vale el precio del tipo. El precio queda fijo al cargar la compra.
+ */
+export const tandas = pgTable(
+  "tandas",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    tipoId: uuid()
+      .notNull()
+      .references(() => tiposEntrada.id),
+    precioCentavos: bigint({ mode: "bigint" }).notNull(),
+    /** Hasta cuándo vale este precio. */
+    hasta: momento().notNull(),
+    creadaPorAdminId: uuid()
+      .notNull()
+      .references(() => admins.id),
+    ...tiempos,
+  },
+  (t) => [
+    uniqueIndex("tandas_tipo_hasta").on(t.tipoId, t.hasta),
+    check("tandas_precio_positivo", sql`${t.precioCentavos} > 0`),
+  ],
+);
+
 /** Cada entrada es nominal: nombre y DNI, con un código único (el QR). */
 export const entradas = pgTable(
   "entradas",
