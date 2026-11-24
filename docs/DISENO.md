@@ -153,7 +153,10 @@ Convenciones: `id` UUID; `*_centavos` BIGINT; `creado_en` / `actualizado_en` en 
 
 ### Personas y acceso
 - **admins**: nombre, email, teléfono, rol (`DUENO` | `ADMIN`), activo.
-- **jugadores**: nombre, apellido, DNI (único), teléfono WhatsApp, email, camada, estado (`ACTIVO` | `BAJA` | `ELIMINADO`), fecha de alta, fecha de baja, token del link personal.
+- **jugadores**: nombre, apellido, DNI (único, solo números), teléfono WhatsApp, email, camada, estado (`ACTIVO` | `BAJA` | `ELIMINADO`), fecha de alta, fecha de baja. El token del link personal se agrega con las cuotas (etapa 8).
+  - **Formulario de Google** (preguntas separadas, en este orden): Nombre, Apellido, DNI (sin puntos), Celular (WhatsApp), Email, Camada. Se descarga la planilla de respuestas como .csv y el dueño la importa desde Pagos → Jugadores; la app muestra antes qué pasa con cada fila y nunca duplica un DNI.
+  - Cambiar el DNI lo puede hacer solo el dueño, porque es lo que la app usa para reconocer las transferencias.
+  - La auditoría de jugadores registra qué campos cambiaron, pero no los valores, para que los datos personales no queden guardados después de eliminar a alguien.
 
 ### Cuotas y pagos
 - **periodos_cuota**: año, mes (únicos juntos), monto_centavos, es_mes_fiesta, nota, estado (`ABIERTO` | `CERRADO`).
@@ -207,7 +210,7 @@ Los jugadores reales se cargan en **febrero de 2027**. Hasta entonces se constru
 | 4 | ✅ Sábados | Invitados, cocina por camada y gastos con foto del ticket leída por IA |
 | 5 | ✅ Caja y análisis | Libro, saldos, efectivo con responsable, traspasos entre admins, control contra la reserva, gráficos y preguntas a la IA |
 | 6 | ✅ Conexión con Mercado Pago | Conexión de solo consulta, prueba con una transferencia real y protecciones (una transferencia confirma un solo pago). **Decisión del dueño (24/11/2026):** la verificación es automática por DNI, sin comprobantes; se termina junto con jugadores y cuotas, que traen la lista de DNIs. |
-| 7 | Jugadores | Alta, baja, eliminación e importación desde el Formulario de Google con DNI (se usa en febrero) |
+| 7 | ✅ Jugadores | Alta, edición, baja, eliminación e importación desde el Formulario de Google con DNI (se usa en febrero). Los admins dan de alta y corrigen contacto; el DNI, la baja, la eliminación y la importación son del dueño. La auditoría registra qué campos cambiaron, sin guardar datos personales. |
 | 8 | Cuotas y pagos | Períodos, cargos, efectivo, **verificación automática por DNI cada 15 minutos**, bandeja "Revisar" (¿de quién es esta transferencia?), anulaciones y lista de deudores |
 | 9 | Fiestas | Creación, venta por alias con DNI, verificación automática, entradas con QR por email y puerta |
 | 10 | Stock y proveedores | 2027 |

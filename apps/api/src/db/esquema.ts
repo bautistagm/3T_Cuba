@@ -588,3 +588,45 @@ export const comprobantes = pgTable(
     ),
   ],
 );
+
+// ---------------------------------------------------------------------------
+// Jugadores (etapa 7). El DNI es lo que usa la verificación automática de transferencias.
+// ---------------------------------------------------------------------------
+
+export const estadoJugador = pgEnum("estado_jugador", [
+  "ACTIVO",
+  /** Dado de baja por el dueño: no genera cuotas ni aparece en listas. Se puede reactivar. */
+  "BAJA",
+  /** Eliminado por el dueño teniendo pagos: se borraron sus datos personales y queda como "Jugador eliminado". */
+  "ELIMINADO",
+]);
+
+export const jugadores = pgTable(
+  "jugadores",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    nombre: text(),
+    apellido: text(),
+    /** Solo números, sin ceros a la izquierda ("30123456"). */
+    dni: text(),
+    telefono: text(),
+    email: text(),
+    camada: text(),
+    estado: estadoJugador().notNull().default("ACTIVO"),
+    bajaEn: momento(),
+    eliminadoEn: momento(),
+    ...tiempos,
+  },
+  (t) => [
+    uniqueIndex("jugadores_dni").on(t.dni),
+    index("jugadores_estado").on(t.estado),
+    check(
+      "jugadores_datos_segun_estado",
+      sql`CASE WHEN ${t.estado} = 'ELIMINADO'
+        THEN ${t.nombre} IS NULL AND ${t.apellido} IS NULL AND ${t.dni} IS NULL AND ${t.telefono} IS NULL AND ${t.email} IS NULL AND ${t.eliminadoEn} IS NOT NULL
+        ELSE ${t.nombre} IS NOT NULL AND ${t.apellido} IS NOT NULL AND ${t.dni} IS NOT NULL END`,
+    ),
+    check("jugadores_dni_valido", sql`${t.dni} IS NULL OR ${t.dni} ~ '^[1-9][0-9]{6,7}$'`),
+    check("jugadores_baja_con_fecha", sql`(${t.estado} = 'BAJA') = (${t.bajaEn} IS NOT NULL)`),
+  ],
+);

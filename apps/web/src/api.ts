@@ -25,7 +25,7 @@ export class ErrorApi extends Error {
   }
 }
 
-async function pedir<T>(metodo: "GET" | "POST" | "PUT", ruta: string, cuerpo?: unknown): Promise<T> {
+async function pedir<T>(metodo: "GET" | "POST" | "PUT" | "PATCH", ruta: string, cuerpo?: unknown): Promise<T> {
   let respuesta: Response;
   try {
     respuesta = await fetch(`/api${ruta}`, {
@@ -245,6 +245,31 @@ export interface PruebaComprobante {
   motivo?: string;
 }
 
+export interface Jugador {
+  id: string;
+  nombre: string;
+  apellido: string;
+  dni: string;
+  telefono: string | null;
+  email: string | null;
+  camada: string | null;
+  estado: "ACTIVO" | "BAJA";
+  altaEn: string;
+  bajaEn: string | null;
+}
+export interface DatosJugador {
+  nombre: string;
+  apellido: string;
+  dni: string;
+  telefono: string;
+  email: string;
+  camada: string;
+}
+export interface VistaImportacion {
+  filas: { fila: number; nombre: string; apellido: string; dni: string; camada: string; estado: "NUEVO" | "YA_ESTA" | "ERROR"; motivo: string | null }[];
+  resumen: { nuevos: number; yaEstan: number; conError: number };
+}
+
 type ItemParaEnviar = { descripcion: string; cantidad?: string; categoria: Categoria; subtotalCentavos: string };
 
 export const api = {
@@ -258,6 +283,19 @@ export const api = {
   crearAdmin: (datos: { nombre: string; email: string; telefono?: string; contrasena: string }) =>
     pedir<{ admin: AdminListado }>("POST", "/admins", datos),
   desactivarAdmin: (id: string) => pedir<{ admin: AdminListado }>("POST", `/admins/${id}/desactivar`),
+  jugadores: (filtro: { estado: "ACTIVO" | "BAJA"; buscar: string }) =>
+    pedir<{ jugadores: Jugador[]; totales: { activos: number; baja: number } }>(
+      "GET",
+      `/jugadores?${new URLSearchParams({ estado: filtro.estado, ...(filtro.buscar.trim() ? { buscar: filtro.buscar.trim() } : {}) }).toString()}`,
+    ),
+  crearJugador: (datos: DatosJugador) => pedir<{ jugador: Jugador }>("POST", "/jugadores", datos),
+  editarJugador: (id: string, datos: Partial<DatosJugador>) => pedir<{ jugador: Jugador }>("PATCH", `/jugadores/${id}`, datos),
+  bajaJugador: (id: string) => pedir<{ jugador: Jugador }>("POST", `/jugadores/${id}/baja`),
+  reactivarJugador: (id: string) => pedir<{ jugador: Jugador }>("POST", `/jugadores/${id}/reactivar`),
+  eliminarJugador: (id: string, confirmacion: string) =>
+    pedir<{ borrado: boolean; anonimizado: boolean }>("POST", `/jugadores/${id}/eliminar`, { confirmacion }),
+  analizarImportacion: (csv: string) => pedir<VistaImportacion>("POST", "/jugadores/importar/analizar", { csv }),
+  importarJugadores: (csv: string) => pedir<{ importados: number }>("POST", "/jugadores/importar", { csv }),
   probarMercadoPago: () => pedir<PruebaMercadoPago>("GET", "/mercadopago/prueba"),
   probarComprobante: (imagenBase64: string) => pedir<PruebaComprobante>("POST", "/verificacion/probar", { imagenBase64 }),
 

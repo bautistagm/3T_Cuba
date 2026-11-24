@@ -28,6 +28,7 @@ import { rutasSabados } from "./rutas/sabados.js";
 import { rutasTickets } from "./rutas/tickets.js";
 import { rutasCaja } from "./rutas/caja.js";
 import { rutasMercadoPago } from "./rutas/mercadopago.js";
+import { rutasJugadores } from "./rutas/jugadores.js";
 import { ErrorMercadoPago } from "./mercadopago/cliente.js";
 import { buscarEntradas } from "./mercadopago/movimientos.js";
 import { crearLectorComprobantesGemini, lectorComprobantesSinIa, type LectorComprobantes } from "./ia/lectorComprobantes.js";
@@ -287,6 +288,7 @@ export async function construirApp(opciones: {
       rutasSabados(api, db);
       rutasTickets(api, db, lectorTickets);
       rutasCaja(api, db, lectorTickets, asistente);
+      rutasJugadores(api, db);
       rutasMercadoPago(api, db, config.MP_ACCESS_TOKEN, verificacion, opciones.fetchMercadoPago);
 
       api.setNotFoundHandler((_peticion, respuesta) =>
