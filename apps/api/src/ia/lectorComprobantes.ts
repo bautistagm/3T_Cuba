@@ -5,6 +5,7 @@
  * comparando contra los movimientos reales de la cuenta. Nunca se confía en la IA sin verificar.
  */
 import { GoogleGenAI } from "@google/genai";
+import { conModelos, explicarErrorIa } from "./gemini.js";
 import { z } from "zod";
 
 export const lecturaComprobanteSchema = z.object({
@@ -82,9 +83,8 @@ Reglas:
 export function crearLectorComprobantesGemini(opciones: { apiKey: string; modelos: readonly string[] }): LectorComprobantes {
   const ia = new GoogleGenAI({ apiKey: opciones.apiKey, apiVersion: "v1beta", httpOptions: { timeout: 45_000 } });
   return async ({ contenido, tipoMime }) => {
-    let ultimoError: unknown;
-    for (const modelo of opciones.modelos) {
-      try {
+    try {
+      return await conModelos(opciones.modelos, async (modelo) => {
         const respuesta = await ia.models.generateContent({
           model: modelo,
           contents: [
@@ -97,14 +97,10 @@ export function crearLectorComprobantesGemini(opciones: { apiKey: string; modelo
         const lectura = lecturaComprobanteSchema.safeParse(JSON.parse(texto));
         if (!lectura.success) throw new ErrorLectorComprobantes("La IA devolvió datos con un formato inesperado.");
         return lectura.data;
-      } catch (error) {
-        ultimoError = error;
-        const estado = (error as { status?: number }).status;
-        if (estado !== undefined && ![404, 429, 500, 503].includes(estado)) break;
-      }
+      });
+    } catch (error) {
+      throw new ErrorLectorComprobantes(`No se pudo leer el comprobante: ${explicarErrorIa(error)}`);
     }
-    const detalle = ultimoError instanceof Error ? ultimoError.message : "error desconocido";
-    throw new ErrorLectorComprobantes(`La IA no pudo leer el comprobante (${detalle.slice(0, 200)}).`);
   };
 }
 

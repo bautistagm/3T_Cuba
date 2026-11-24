@@ -5,6 +5,7 @@
  * y, si no, manda el ticket a "Revisar". Nunca se confía en la IA sin verificar.
  */
 import { GoogleGenAI } from "@google/genai";
+import { conModelos, explicarErrorIa } from "./gemini.js";
 import { z } from "zod";
 import { CATEGORIAS } from "../gastos/gastos.js";
 
@@ -78,9 +79,8 @@ export function crearLectorGemini(opciones: { apiKey: string; modelos: readonly 
   // v1beta: la versión de la API donde está documentada la salida con esquema JSON.
   const ia = new GoogleGenAI({ apiKey: opciones.apiKey, apiVersion: "v1beta", httpOptions: { timeout: 45_000 } });
   return async ({ contenido, tipoMime }) => {
-    let ultimoError: unknown;
-    for (const modelo of opciones.modelos) {
-      try {
+    try {
+      return await conModelos(opciones.modelos, async (modelo) => {
         const respuesta = await ia.models.generateContent({
           model: modelo,
           contents: [
@@ -96,15 +96,10 @@ export function crearLectorGemini(opciones: { apiKey: string; modelos: readonly 
         const lectura = lecturaTicketSchema.safeParse(JSON.parse(texto));
         if (!lectura.success) throw new ErrorLectorIa("La IA devolvió datos con un formato inesperado.");
         return lectura.data;
-      } catch (error) {
-        ultimoError = error;
-        // Si el problema es del modelo (saturado, no existe, error del servicio), probamos el siguiente.
-        const estado = (error as { status?: number }).status;
-        if (estado !== undefined && ![404, 429, 500, 503].includes(estado)) break;
-      }
+      });
+    } catch (error) {
+      throw new ErrorLectorIa(`No se pudo leer el ticket: ${explicarErrorIa(error)}`);
     }
-    const detalle = ultimoError instanceof Error ? ultimoError.message : "error desconocido";
-    throw new ErrorLectorIa(`La IA no pudo leer el ticket (${detalle.slice(0, 200)}).`);
   };
 }
 
