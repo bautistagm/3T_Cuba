@@ -86,6 +86,9 @@ export function PaginaComprarEntradas() {
             <section className="tarjeta">
               <h2>Entrada {venta.tipo.nombre} · {pesos(venta.tipo.precioCentavos)}</h2>
               <p className="ayuda">{fechaFiesta(venta.fiesta.fechaHora)}{venta.fiesta.lugar ? ` · ${venta.fiesta.lugar}` : ""}</p>
+              {venta.tipo.tanda && (
+                <p className="aviso ok">Precio de esta tanda hasta el {fechaFiesta(venta.tipo.tanda.hasta)}. Después sale {pesos(venta.tipo.tanda.despuesCentavos)}. El precio queda fijo cuando cargás la compra.</p>
+              )}
               {!venta.abierta && <p className="aviso error">La venta para esta fiesta está cerrada.</p>}
             </section>
             {venta.abierta && (

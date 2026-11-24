@@ -179,7 +179,7 @@ export function PantallaFiesta() {
           <p className="ayuda">{fechaFiesta(d.fiesta.fechaHora)}{d.fiesta.lugar ? ` · ${d.fiesta.lugar}` : ""}</p>
           <div className="numeros">
             {d.tipos.map((t) => (
-              <span key={t.id}><span className="ayuda">{t.nombre} · {pesos(t.precioCentavos)}</span><strong>{contar(t.id)} vendidas</strong></span>
+              <span key={t.id}><span className="ayuda">{t.nombre} · {pesos(t.precioVigenteCentavos)}</span><strong>{contar(t.id)} vendidas</strong></span>
             ))}
             <span><span className="ayuda">Recaudado</span><strong>{pesos(d.recaudadoCentavos)}</strong></span>
           </div>
@@ -195,6 +195,8 @@ export function PantallaFiesta() {
             </button>
           )}
         </section>
+
+        {esDueno && <PreciosYTandas tipos={d.tipos} hacer={hacer} />}
 
         <section className="tarjeta">
           <h2>Links de venta</h2>
@@ -293,4 +295,69 @@ function EstadoEmail(props: { email: string; estado: DetalleFiesta["emails"][str
   if (e.estado === "ENVIADA") return <span>✉️ Enviado a {props.email}</span>;
   if (e.estado === "PENDIENTE") return <span>✉️ Email pendiente a {props.email}{e.error ? ` (reintentando: ${e.error})` : ""}</span>;
   return <span className="texto-error">✉️ No se pudo mandar a {props.email}{e.error ? `: ${e.error}` : ""}</span>;
+}
+
+/** Tandas (opcionales): precios por fecha. Manda la primera que no terminó; después, el precio del tipo. */
+function PreciosYTandas(props: { tipos: DetalleFiesta["tipos"]; hacer: (accion: () => Promise<unknown>, texto: string) => Promise<void> }) {
+  const [agregandoA, setAgregandoA] = useState<string | null>(null);
+  const [precio, setPrecio] = useState("");
+  const [dia, setDia] = useState("");
+  const [horaFin, setHoraFin] = useState("23:59");
+  const [error, setError] = useState<string | null>(null);
+
+  async function agregar(evento: FormEvent, tipoId: string) {
+    evento.preventDefault();
+    setError(null);
+    const monto = leerMonto(precio);
+    if (!monto.ok) return setError(monto.error);
+    await props.hacer(() => api.agregarTanda(tipoId, { precioCentavos: monto.centavos, hasta: new Date(`${dia}T${horaFin}:00-03:00`).toISOString() }), "Tanda agregada.");
+    setAgregandoA(null);
+    setPrecio("");
+    setDia("");
+  }
+
+  return (
+    <section className="tarjeta">
+      <h2>Precios y tandas</h2>
+      <p className="ayuda">Opcional. Cada tanda tiene su precio y hasta cuándo vale. Cuando terminan todas, vale el precio final. Quien carga la compra paga el precio de ese momento.</p>
+      {props.tipos.map((t) => (
+        <div key={t.id} className="bloque-tandas">
+          <div className="fila-titulo">
+            <strong>{t.nombre} · hoy {pesos(t.precioVigenteCentavos)}</strong>
+            {agregandoA !== t.id && (
+              <button type="button" className="boton secundario chico" onClick={() => { setAgregandoA(t.id); setError(null); }}>+ Tanda</button>
+            )}
+          </div>
+          <ul className="lista">
+            {t.tandas.map((x, i) => (
+              <li key={x.id}>
+                <span className="datos">
+                  <strong>{i + 1}ª tanda · {pesos(x.precioCentavos)}</strong>
+                  <span>{x.termino ? "Terminó el" : "Hasta el"} {fechaFiesta(x.hasta)}</span>
+                </span>
+                {x.termino ? <span className="chip gris">Terminó</span> : (
+                  <button type="button" className="enlace" onClick={() => window.confirm("¿Quitar esta tanda?") && void props.hacer(() => api.quitarTanda(x.id), "Tanda quitada.")}>quitar</button>
+                )}
+              </li>
+            ))}
+            <li>
+              <span className="datos"><strong>Precio final · {pesos(t.precioCentavos)}</strong><span>{t.tandas.length ? "Cuando terminan las tandas" : "Sin tandas: precio único"}</span></span>
+            </li>
+          </ul>
+          {agregandoA === t.id && (
+            <form onSubmit={(e) => void agregar(e, t.id)}>
+              <label className="campo">Precio de la tanda<input inputMode="decimal" required value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="Ej: 10.000" /></label>
+              <div className="fila-campos">
+                <label className="campo">Vale hasta el día<input type="date" required value={dia} onChange={(e) => setDia(e.target.value)} /></label>
+                <label className="campo">Hora<input type="time" required value={horaFin} onChange={(e) => setHoraFin(e.target.value)} /></label>
+              </div>
+              {error && <p className="aviso error" role="alert">{error}</p>}
+              <button className="boton principal" type="submit">Agregar tanda</button>
+              <button className="boton secundario" type="button" onClick={() => setAgregandoA(null)}>Cancelar</button>
+            </form>
+          )}
+        </div>
+      ))}
+    </section>
+  );
 }

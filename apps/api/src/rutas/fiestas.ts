@@ -3,7 +3,10 @@ import { ingresosSchema, listaDePuerta, registrarIngresos } from "../fiestas/pue
 import { z } from "zod";
 import type { BaseDeDatos } from "../db/cliente.js";
 import {
+  agregarTanda,
   anularCompraPendiente,
+  quitarTanda,
+  tandaSchema,
   cambiarEstadoVenta,
   compraSchema,
   comprasPendientesPorMonto,
@@ -68,6 +71,18 @@ export function rutasFiestas(
     const { abierta } = z.object({ abierta: z.boolean() }).parse(peticion.body);
     const f = await cambiarEstadoVenta(db, actorDe(peticion), idSchema.parse(peticion.params).id, abierta);
     return { estado: f.estado };
+  });
+
+  api.post("/tipos-entrada/:id/tandas", async (peticion, respuesta) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(peticion.params);
+    const tanda = await agregarTanda(db, actorDe(peticion), id, tandaSchema.parse(peticion.body));
+    return respuesta.code(201).send({ id: tanda?.id });
+  });
+
+  api.post("/tandas/:id/quitar", async (peticion) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(peticion.params);
+    await quitarTanda(db, actorDe(peticion), id);
+    return { ok: true };
   });
 
   api.post("/fiestas/:id/link-puerta", async (peticion) => {

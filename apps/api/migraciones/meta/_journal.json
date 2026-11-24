@@ -148,6 +148,13 @@
       "when": 1795546047975,
       "tag": "0020_protecciones_puerta",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1795546891247,
+      "tag": "0021_tandas",
+      "breakpoints": true
     }
   ]
 }

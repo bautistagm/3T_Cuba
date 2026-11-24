@@ -320,7 +320,14 @@ export interface FiestaListada {
 }
 export interface DetalleFiesta {
   fiesta: { id: string; nombre: string; fechaHora: string; lugar: string | null; estado: "A_LA_VENTA" | "VENTA_CERRADA"; tokenPuerta: string | null };
-  tipos: { id: string; nombre: string; precioCentavos: string; tokenVenta: string }[];
+  tipos: {
+    id: string;
+    nombre: string;
+    precioCentavos: string;
+    precioVigenteCentavos: string;
+    tokenVenta: string;
+    tandas: { id: string; precioCentavos: string; hasta: string; termino: boolean }[];
+  }[];
   entradas: {
     id: string;
     compraId: string;
@@ -340,7 +347,7 @@ export interface DetalleFiesta {
 }
 export interface VentaPublica {
   fiesta: { nombre: string; fechaHora: string; lugar: string | null };
-  tipo: { nombre: string; precioCentavos: string };
+  tipo: { nombre: string; precioCentavos: string; tanda: { hasta: string; despuesCentavos: string } | null };
   abierta: boolean;
   alias: string | null;
 }
@@ -420,6 +427,8 @@ export const api = {
     pedir<{ fiesta: { id: string } }>("POST", "/fiestas", datos),
   fiesta: (id: string) => pedir<DetalleFiesta>("GET", `/fiestas/${id}`),
   ventaFiesta: (id: string, abierta: boolean) => pedir<unknown>("POST", `/fiestas/${id}/venta`, { abierta }),
+  agregarTanda: (tipoId: string, datos: { precioCentavos: string; hasta: string }) => pedir<{ id: string }>("POST", `/tipos-entrada/${tipoId}/tandas`, datos),
+  quitarTanda: (id: string) => pedir<{ ok: true }>("POST", `/tandas/${id}/quitar`),
   nuevoLinkPuerta: (id: string) => pedir<{ tokenPuerta: string }>("POST", `/fiestas/${id}/link-puerta`),
   reenviarEntradas: (compraId: string, email?: string) => pedir<unknown>("POST", `/compras-entradas/${compraId}/reenviar`, email ? { email } : {}),
   anularCompraEntradas: (id: string) => pedir<unknown>("POST", `/compras-entradas/${id}/anular`),
