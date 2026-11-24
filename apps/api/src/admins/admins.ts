@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { registrarAuditoria, type Actor } from "../auditoria/auditoria.js";
-import { LARGO_MINIMO_CONTRASENA, hashearContrasena } from "../auth/contrasenas.js";
+import { LARGO_MINIMO_CONTRASENA, hashearContrasena, verificarContrasena } from "../auth/contrasenas.js";
 import { revocarSesionesDeAdmin } from "../auth/sesiones.js";
 import { crearCuentaEfectivo } from "../caja/cuentas.js";
 import type { BaseDeDatos, Ejecutor } from "../db/cliente.js";
@@ -10,7 +10,7 @@ import { admins } from "../db/esquema.js";
 export class ErrorAdmins extends Error {
   constructor(
     mensaje: string,
-    readonly codigo: "YA_HAY_DUENO" | "EMAIL_EN_USO" | "SIN_PERMISO" | "NO_EXISTE" | "TOPE_ADMINS",
+    readonly codigo: "YA_HAY_DUENO" | "EMAIL_EN_USO" | "SIN_PERMISO" | "NO_EXISTE" | "TOPE_ADMINS" | "CONTRASENA_INCORRECTA" | "MISMA_CONTRASENA",
   ) {
     super(mensaje);
     this.name = "ErrorAdmins";
@@ -136,4 +136,51 @@ export async function desactivarAdmin(
 
 export async function listarAdmins(db: BaseDeDatos) {
   return db.select(columnasPublicas).from(admins).orderBy(admins.creadoEn);
+}
+
+export const contrasenaNuevaSchema = z
+  .string()
+  .min(LARGO_MINIMO_CONTRASENA, `La contraseña tiene que tener al menos ${LARGO_MINIMO_CONTRASENA} caracteres.`)
+  .max(200);
+
+/**
+ * Cada uno cambia su propia contraseña, sabiendo la actual. Se cierran sus otras sesiones
+ * (por si alguien más la conocía); la sesión desde donde la cambia sigue abierta.
+ */
+export async function cambiarMiContrasena(db: BaseDeDatos, adminId: string, sesionActualId: string, actual: string, nueva: string) {
+  const valida = contrasenaNuevaSchema.parse(nueva);
+  const [admin] = await db.select().from(admins).where(eq(admins.id, adminId)).limit(1);
+  if (!admin || !admin.activo) throw new ErrorAdmins("El administrador no existe.", "NO_EXISTE");
+  if (!(await verificarContrasena(admin.hashContrasena, actual))) {
+    throw new ErrorAdmins("La contraseña actual no es correcta.", "CONTRASENA_INCORRECTA");
+  }
+  if (actual === valida) throw new ErrorAdmins("La contraseña nueva tiene que ser distinta de la actual.", "MISMA_CONTRASENA");
+  const hashNuevo = await hashearContrasena(valida);
+  await db.transaction(async (tx) => {
+    await tx.update(admins).set({ hashContrasena: hashNuevo }).where(eq(admins.id, adminId));
+    await revocarSesionesDeAdmin(tx, adminId, sesionActualId);
+    await registrarAuditoria(tx, { tipo: "ADMIN", adminId }, { accion: "CONTRASENA_CAMBIADA", entidad: "admin", entidadId: adminId });
+  });
+}
+
+/**
+ * El dueño le pone una contraseña nueva a un administrador que se olvidó la suya.
+ * Se cierran todas las sesiones de ese administrador. Se la tiene que pasar en persona.
+ */
+export async function restablecerContrasena(
+  db: BaseDeDatos,
+  actor: Extract<Actor, { tipo: "ADMIN" }> & { rol: "DUENO" | "ADMIN" },
+  adminId: string,
+  nueva: string,
+) {
+  if (actor.rol !== "DUENO") throw new ErrorAdmins("Solo el dueño puede restablecer contraseñas.", "SIN_PERMISO");
+  const valida = contrasenaNuevaSchema.parse(nueva);
+  const hashNuevo = await hashearContrasena(valida);
+  await db.transaction(async (tx) => {
+    const [objetivo] = await tx.select({ id: admins.id, rol: admins.rol }).from(admins).where(eq(admins.id, adminId)).for("update");
+    if (!objetivo || objetivo.rol !== "ADMIN") throw new ErrorAdmins("El administrador no existe.", "NO_EXISTE");
+    await tx.update(admins).set({ hashContrasena: hashNuevo }).where(eq(admins.id, adminId));
+    await revocarSesionesDeAdmin(tx, adminId);
+    await registrarAuditoria(tx, actor, { accion: "CONTRASENA_RESTABLECIDA", entidad: "admin", entidadId: adminId });
+  });
 }

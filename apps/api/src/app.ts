@@ -9,11 +9,13 @@ import { eq, sql } from "drizzle-orm";
 import { z, ZodError } from "zod";
 import {
   ErrorAdmins,
+  cambiarMiContrasena,
   crearAdmin,
   crearDueno,
   datosNuevoAdminSchema,
   desactivarAdmin,
   listarAdmins,
+  restablecerContrasena,
 } from "./admins/admins.js";
 import { registrarAuditoria } from "./auditoria/auditoria.js";
 import { obtenerHashDeRelleno, verificarContrasena } from "./auth/contrasenas.js";
@@ -121,7 +123,7 @@ export async function construirApp(opciones: {
       return responderError(respuesta, 400, "DATOS_INVALIDOS", error.issues.map((i) => i.message).join(" "));
     }
     if (error instanceof ErrorAdmins) {
-      const estado = error.codigo === "SIN_PERMISO" ? 403 : error.codigo === "NO_EXISTE" ? 404 : 409;
+      const estado = error.codigo === "SIN_PERMISO" ? 403 : error.codigo === "NO_EXISTE" ? 404 : error.codigo === "CONTRASENA_INCORRECTA" ? 400 : 409;
       return responderError(respuesta, estado, error.codigo, error.message);
     }
     if (error instanceof ErrorNegocio) return responderError(respuesta, error.estado, error.codigo, error.message);
@@ -258,6 +260,13 @@ export async function construirApp(opciones: {
         return { ok: true };
       });
 
+      api.post("/auth/contrasena", { config: { rateLimit: { max: 5, timeWindow: "1 minute" } } }, async (peticion) => {
+        const admin = requiereSesion(peticion);
+        const { actual, nueva } = z.object({ actual: z.string().min(1, "Escribí tu contraseña actual.").max(200), nueva: z.string().max(200) }).parse(peticion.body);
+        await cambiarMiContrasena(db, admin.id, admin.sesionId, actual, nueva);
+        return { ok: true };
+      });
+
       api.get("/auth/yo", async (peticion) => {
         const admin = requiereSesion(peticion);
         return { admin: { id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol } };
@@ -285,6 +294,14 @@ export async function construirApp(opciones: {
         if (!objetivo) throw new ErrorHttp(404, "NO_EXISTE", "El administrador no existe.");
         const admin = await desactivarAdmin(db, { tipo: "ADMIN", adminId: dueno.id, rol: dueno.rol, ip: peticion.ip }, id);
         return { admin };
+      });
+
+      api.post("/admins/:id/contrasena", async (peticion) => {
+        const dueno = requiereDueno(peticion);
+        const { id } = z.object({ id: z.string().uuid() }).parse(peticion.params);
+        const { nueva } = z.object({ nueva: z.string().max(200) }).parse(peticion.body);
+        await restablecerContrasena(db, { tipo: "ADMIN", adminId: dueno.id, rol: dueno.rol, ip: peticion.ip }, id, nueva);
+        return { ok: true };
       });
 
       rutasSabados(api, db);

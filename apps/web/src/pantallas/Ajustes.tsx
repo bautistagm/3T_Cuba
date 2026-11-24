@@ -8,6 +8,24 @@ const MAXIMO_ADMINS = 5;
 
 export function Ajustes() {
   const yo = useAdmin();
+  if (yo.rol !== "DUENO") {
+    return (
+      <>
+        <header className="encabezado">
+          <Link to="/" className="volver">‹ 3T</Link>
+          <h1>Ajustes</h1>
+        </header>
+        <main className="contenido">
+          <MiContrasena />
+        </main>
+      </>
+    );
+  }
+  return <AjustesDelDueno />;
+}
+
+function AjustesDelDueno() {
+  const yo = useAdmin();
   const [admins, setAdmins] = useState<AdminListado[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -43,12 +61,26 @@ export function Ajustes() {
     }
   }
 
+  async function restablecer(admin: AdminListado) {
+    const nueva = window.prompt(
+      `Nueva contraseña para ${admin.nombre} (al menos 10 letras o números). Se le cierra la sesión y se la tenés que pasar en persona:`,
+    );
+    if (nueva === null) return;
+    setError(null);
+    try {
+      await api.restablecerContrasena(admin.id, nueva);
+      setAviso(`${admin.nombre} ya puede entrar con la contraseña nueva. Pasásela en persona y pedile que la cambie.`);
+    } catch (e) {
+      setError(e instanceof ErrorApi ? e.message : "No se pudo cambiar la contraseña.");
+    }
+  }
+
   return (
     <>
       <header className="encabezado">
         <Link to="/" className="volver">‹ 3T</Link>
         <h1>Ajustes</h1>
-        <p className="sub">Solo vos ves esta pantalla</p>
+        <p className="sub">Los administradores solo ven su contraseña</p>
       </header>
       <main className="contenido">
         <section className="tarjeta" aria-labelledby="titulo-admins">
@@ -69,12 +101,15 @@ export function Ajustes() {
                 <span className="chip azul">Dueño</span>
               </div>
               {activos.map((a) => (
-                <div className="fila" key={a.id}>
+                <div className="fila fila-admin" key={a.id}>
                   <span className="datos">
                     <strong>{a.nombre}</strong>
                     <span>{a.email}{a.telefono ? ` · ${a.telefono}` : ""}</span>
                   </span>
-                  <button type="button" className="boton peligro" onClick={() => void desactivar(a)}>Desactivar</button>
+                  <span className="acciones-cuota">
+                    <button type="button" className="boton secundario chico" onClick={() => void restablecer(a)}>Nueva contraseña</button>
+                    <button type="button" className="boton peligro" onClick={() => void desactivar(a)}>Desactivar</button>
+                  </span>
                 </div>
               ))}
             </div>
@@ -108,6 +143,7 @@ export function Ajustes() {
             ))}
           </section>
         )}
+        <MiContrasena />
         <PanelMercadoPago />
       </main>
     </>
@@ -162,5 +198,55 @@ function FormNuevoAdmin(props: { alCancelar: () => void; alCrear: (nombre: strin
       <button className="boton principal" type="submit" disabled={enviando}>{enviando ? "Guardando…" : "Agregar"}</button>
       <button className="boton secundario" type="button" onClick={props.alCancelar}>Cancelar</button>
     </form>
+  );
+}
+
+/** Cambiar la propia contraseña (todos). */
+function MiContrasena() {
+  const [abierto, setAbierto] = useState(false);
+  const [actual, setActual] = useState("");
+  const [nueva, setNueva] = useState("");
+  const [repetida, setRepetida] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
+
+  async function enviar(evento: FormEvent) {
+    evento.preventDefault();
+    setError(null);
+    if (nueva !== repetida) return setError("La contraseña nueva no coincide en los dos campos.");
+    setGuardando(true);
+    try {
+      await api.cambiarMiContrasena(actual, nueva);
+      setOk("Contraseña cambiada. Si tenías la app abierta en otro celular, ahí vas a tener que volver a entrar.");
+      setAbierto(false);
+      setActual("");
+      setNueva("");
+      setRepetida("");
+    } catch (e) {
+      setError(e instanceof ErrorApi ? e.message : "No se pudo cambiar la contraseña.");
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <section className="tarjeta" aria-labelledby="titulo-contrasena">
+      <h2 id="titulo-contrasena">Mi contraseña</h2>
+      {ok && <p className="aviso ok" role="status">{ok}</p>}
+      {!abierto && (
+        <button type="button" className="boton secundario" onClick={() => { setAbierto(true); setOk(null); }}>Cambiar mi contraseña</button>
+      )}
+      {abierto && (
+        <form className="panel" onSubmit={enviar}>
+          <label className="campo">Contraseña actual<input type="password" autoComplete="current-password" required value={actual} onChange={(e) => setActual(e.target.value)} /></label>
+          <label className="campo">Contraseña nueva (al menos 10 letras o números)<input type="password" autoComplete="new-password" required minLength={10} value={nueva} onChange={(e) => setNueva(e.target.value)} /></label>
+          <label className="campo">Repetí la contraseña nueva<input type="password" autoComplete="new-password" required value={repetida} onChange={(e) => setRepetida(e.target.value)} /></label>
+          {error && <p className="aviso error" role="alert">{error}</p>}
+          <button className="boton principal" type="submit" disabled={guardando}>{guardando ? "Guardando…" : "Cambiar contraseña"}</button>
+          <button className="boton secundario" type="button" onClick={() => setAbierto(false)}>Cancelar</button>
+        </form>
+      )}
+    </section>
   );
 }

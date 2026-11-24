@@ -355,6 +355,8 @@ export const api = {
   transferenciaYaRegistrada: (id: string, nota: string) => pedir<unknown>("POST", `/transferencias/${id}/ya-registrada`, { nota }),
   transferenciaOtroIngreso: (id: string, nota: string) => pedir<unknown>("POST", `/transferencias/${id}/otro-ingreso`, { nota }),
   transferenciaNoEsDelPlantel: (id: string, nota: string) => pedir<unknown>("POST", `/transferencias/${id}/no-es-del-plantel`, { nota }),
+  cambiarMiContrasena: (actual: string, nueva: string) => pedir<unknown>("POST", "/auth/contrasena", { actual, nueva }),
+  restablecerContrasena: (adminId: string, nueva: string) => pedir<unknown>("POST", `/admins/${adminId}/contrasena`, { nueva }),
   probarMercadoPago: () => pedir<PruebaMercadoPago>("GET", "/mercadopago/prueba"),
 
   sabadoActual: () => pedir<DetalleSabado>("GET", "/sabados/actual"),
