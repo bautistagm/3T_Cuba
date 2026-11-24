@@ -18,6 +18,7 @@ import type { BaseDeDatos, Ejecutor } from "../db/cliente.js";
 import { jugadores } from "../db/esquema.js";
 import { ErrorNegocio, noExiste, soloDueno } from "../errores.js";
 import { leerCsv } from "./csv.js";
+import { anularPendientesDeJugadorEliminado } from "../cuotas/cuotas.js";
 
 type Jugador = typeof jugadores.$inferSelect;
 
@@ -267,6 +268,7 @@ export async function eliminarJugador(db: BaseDeDatos, actor: ActorAdmin, id: st
       borrado = false;
     }
     if (!borrado) {
+      await anularPendientesDeJugadorEliminado(tx, id);
       await tx
         .update(jugadores)
         .set({ estado: "ELIMINADO", nombre: null, apellido: null, dni: null, telefono: null, email: null, bajaEn: null, eliminadoEn: new Date() })

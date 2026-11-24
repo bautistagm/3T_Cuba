@@ -14,6 +14,7 @@ import {
   customType,
   date,
   index,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -255,6 +256,8 @@ export const pagos = pgTable(
     nombrePagador: text(),
     camadaPagador: text(),
     nota: text(),
+    /** Para cuotas: de qué jugador es el pago. */
+    jugadorId: uuid().references((): AnyPgColumn => jugadores.id),
     /** Si fue en efectivo, qué admin tiene la plata. */
     recibidoPorAdminId: uuid().references(() => admins.id),
     registradoPorAdminId: uuid().references(() => admins.id),
@@ -271,6 +274,8 @@ export const pagos = pgTable(
     check("pagos_monto_positivo", sql`${t.montoCentavos} > 0`),
     check("pagos_efectivo_con_receptor", sql`(${t.medio} <> 'EFECTIVO') OR (${t.recibidoPorAdminId} IS NOT NULL)`),
     check("pagos_invitado_con_sabado", sql`(${t.origen} <> 'INVITADO') OR (${t.sabadoId} IS NOT NULL)`),
+    check("pagos_cuota_con_jugador", sql`(${t.origen} <> 'CUOTA') OR (${t.jugadorId} IS NOT NULL)`),
+    index("pagos_jugador").on(t.jugadorId),
     anulacionCoherente("pagos_anulacion_coherente", t),
   ],
 );
@@ -628,5 +633,61 @@ export const jugadores = pgTable(
     ),
     check("jugadores_dni_valido", sql`${t.dni} IS NULL OR ${t.dni} ~ '^[1-9][0-9]{6,7}$'`),
     check("jugadores_baja_con_fecha", sql`(${t.estado} = 'BAJA') = (${t.bajaEn} IS NOT NULL)`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Cuotas (etapa 8): los meses que abre el dueño y lo que debe cada jugador.
+// ---------------------------------------------------------------------------
+
+export const periodosCuota = pgTable(
+  "periodos_cuota",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    anio: integer().notNull(),
+    mes: integer().notNull(),
+    montoCentavos: bigint({ mode: "bigint" }).notNull(),
+    nota: text(),
+    abiertoPorAdminId: uuid()
+      .notNull()
+      .references(() => admins.id),
+    ...tiempos,
+  },
+  (t) => [
+    uniqueIndex("periodos_anio_mes").on(t.anio, t.mes),
+    check("periodos_mes_valido", sql`${t.mes} BETWEEN 1 AND 12`),
+    check("periodos_anio_valido", sql`${t.anio} BETWEEN 2026 AND 2100`),
+    check("periodos_monto_positivo", sql`${t.montoCentavos} > 0`),
+  ],
+);
+
+export const estadoCargo = pgEnum("estado_cargo", ["PENDIENTE", "PAGADO", "ANULADO"]);
+
+/** Lo que debe un jugador en un mes. Se paga entero con un solo pago (no hay pagos parciales). */
+export const cargos = pgTable(
+  "cargos",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    jugadorId: uuid()
+      .notNull()
+      .references(() => jugadores.id),
+    periodoId: uuid()
+      .notNull()
+      .references(() => periodosCuota.id),
+    montoCentavos: bigint({ mode: "bigint" }).notNull(),
+    estado: estadoCargo().notNull().default("PENDIENTE"),
+    pagoId: uuid().references(() => pagos.id),
+    motivoAnulacion: text(),
+    anuladoPorAdminId: uuid().references(() => admins.id),
+    anuladoEn: momento(),
+    ...tiempos,
+  },
+  (t) => [
+    uniqueIndex("cargos_jugador_periodo").on(t.jugadorId, t.periodoId),
+    index("cargos_periodo_estado").on(t.periodoId, t.estado),
+    index("cargos_pago").on(t.pagoId),
+    check("cargos_monto_positivo", sql`${t.montoCentavos} > 0`),
+    check("cargos_pagado_con_pago", sql`(${t.estado} = 'PAGADO') = (${t.pagoId} IS NOT NULL)`),
+    check("cargos_anulado_con_motivo", sql`(${t.estado} <> 'ANULADO') OR (${t.motivoAnulacion} IS NOT NULL AND ${t.anuladoEn} IS NOT NULL)`),
   ],
 );

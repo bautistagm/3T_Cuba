@@ -3,6 +3,7 @@ import { formatearDni } from "@3t/shared";
 import { api, type DatosJugador, type Jugador, type VistaImportacion } from "../api";
 import { Encabezado, mensajeDe, useAviso } from "../componentes/comunes";
 import { useAdmin } from "../sesion";
+import { CuotasDelJugador, PanelCuotas } from "./Cuotas";
 
 export function PantallaPagos() {
   const [pestana, setPestana] = useState<"jugadores" | "cuotas">("jugadores");
@@ -22,14 +23,7 @@ export function PantallaPagos() {
       {pestana === "jugadores" ? (
         <PanelJugadores />
       ) : (
-        <main className="contenido">
-          <section className="tarjeta">
-            <h2>Cuotas</h2>
-            <p className="ayuda">
-              Llega en la próxima etapa: la cuota de cada mes, quién debe, y las transferencias reconocidas solas por el DNI de cada jugador.
-            </p>
-          </section>
-        </main>
+        <PanelCuotas />
       )}
     </>
   );
@@ -121,7 +115,11 @@ function PanelJugadores() {
                   </span>
                   <span aria-hidden="true" className="flecha">{abierto === j.id ? "▴" : "▾"}</span>
                 </button>
-                {abierto === j.id && <DetalleJugador jugador={j} esDueno={esDueno} alListo={listo} alFallar={(m) => setAviso({ tipo: "error", texto: m })} />}
+                {abierto === j.id && (
+                  <DetalleJugador jugador={j} esDueno={esDueno} alListo={listo}
+                    alAvisar={(texto) => setAviso({ tipo: "ok", texto })}
+                    alFallar={(m) => setAviso({ tipo: "error", texto: m })} />
+                )}
               </li>
             ))}
           </ul>
@@ -176,7 +174,13 @@ function FormJugador(props: { inicial?: Jugador; dniEditable?: boolean; textoBot
   );
 }
 
-function DetalleJugador(props: { jugador: Jugador; esDueno: boolean; alListo: (texto: string) => Promise<void>; alFallar: (m: string) => void }) {
+function DetalleJugador(props: {
+  jugador: Jugador;
+  esDueno: boolean;
+  alListo: (texto: string) => Promise<void>;
+  alAvisar: (texto: string) => void;
+  alFallar: (m: string) => void;
+}) {
   const j = props.jugador;
   const [editando, setEditando] = useState(false);
   const nombre = `${j.nombre} ${j.apellido}`;
@@ -214,6 +218,7 @@ function DetalleJugador(props: { jugador: Jugador; esDueno: boolean; alListo: (t
         <div><dt>Email</dt><dd>{j.email ?? "—"}</dd></div>
         <div><dt>Camada</dt><dd>{j.camada ?? "—"}</dd></div>
       </dl>
+      <CuotasDelJugador jugadorId={j.id} nombre={nombre} activo={j.estado === "ACTIVO"} esDueno={props.esDueno} alCambiar={props.alAvisar} alFallar={props.alFallar} />
       <button type="button" className="boton secundario chico" onClick={() => setEditando(true)}>Editar datos</button>
       {props.esDueno && j.estado === "ACTIVO" && (
         <button type="button" className="boton secundario chico"

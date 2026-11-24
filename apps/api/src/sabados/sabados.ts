@@ -7,6 +7,7 @@ import { codigoEfectivo } from "../caja/cuentas.js";
 import { anularAsiento, registrarAsiento, type ActorAdmin } from "../caja/libro.js";
 import type { BaseDeDatos, Ejecutor } from "../db/cliente.js";
 import { pagos, parametros, sabados } from "../db/esquema.js";
+import { liberarCuotasDelPago } from "../cuotas/cuotas.js";
 import { ErrorNegocio, noExiste, soloDueno } from "../errores.js";
 import { esSabado } from "./fechas.js";
 
@@ -132,6 +133,8 @@ export async function anularPago(db: BaseDeDatos, actor: ActorAdmin, pagoId: str
     if (!pago) throw noExiste("El cobro");
     if (pago.estado === "ANULADO") throw new ErrorNegocio(409, "YA_ANULADO", "Este cobro ya estaba anulado.");
     const anulacionAsientoId = await anularAsiento(tx, actor, { asientoId: pago.asientoId, motivo });
+    // Si era un pago de cuotas, esas cuotas vuelven a estar pendientes.
+    if (pago.origen === "CUOTA") await liberarCuotasDelPago(tx, pago.id);
     const [despues] = await tx
       .update(pagos)
       .set({
