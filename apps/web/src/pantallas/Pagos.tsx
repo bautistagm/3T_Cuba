@@ -4,27 +4,37 @@ import { api, type DatosJugador, type Jugador, type VistaImportacion } from "../
 import { Encabezado, mensajeDe, useAviso } from "../componentes/comunes";
 import { useAdmin } from "../sesion";
 import { CuotasDelJugador, PanelCuotas } from "./Cuotas";
+import { PanelRevisar } from "./Revisar";
 
 export function PantallaPagos() {
-  const [pestana, setPestana] = useState<"jugadores" | "cuotas">("jugadores");
+  const [pestana, setPestana] = useState<"jugadores" | "cuotas" | "revisar">("jugadores");
+  const [paraRevisar, setParaRevisar] = useState(0);
+  const contar = useCallback(() => {
+    api.estadoCuenta().then((e) => setParaRevisar(e.paraRevisar)).catch(() => undefined);
+  }, []);
+  // Al abrir Pagos, la app lee la cuenta (si no se leyó hace poco) y actualiza lo que hay para revisar.
+  useEffect(() => {
+    api.leerCuentaAhora().catch(() => undefined).finally(contar);
+  }, [contar]);
   return (
     <>
       <Encabezado volverA="/" volverTexto="3T" titulo="Pagos" />
       <div className="contenido" style={{ paddingBottom: 0 }}>
-        <div className="segmentado" role="tablist" aria-label="Secciones de pagos">
+        <div className="segmentado tres" role="tablist" aria-label="Secciones de pagos">
           <button type="button" role="tab" aria-selected={pestana === "jugadores"} className={pestana === "jugadores" ? "activo" : ""} onClick={() => setPestana("jugadores")}>
             Jugadores
           </button>
           <button type="button" role="tab" aria-selected={pestana === "cuotas"} className={pestana === "cuotas" ? "activo" : ""} onClick={() => setPestana("cuotas")}>
             Cuotas
           </button>
+          <button type="button" role="tab" aria-selected={pestana === "revisar"} className={pestana === "revisar" ? "activo" : ""} onClick={() => setPestana("revisar")}>
+            Revisar{paraRevisar > 0 ? ` (${paraRevisar})` : ""}
+          </button>
         </div>
       </div>
-      {pestana === "jugadores" ? (
-        <PanelJugadores />
-      ) : (
-        <PanelCuotas />
-      )}
+      {pestana === "jugadores" && <PanelJugadores />}
+      {pestana === "cuotas" && <PanelCuotas />}
+      {pestana === "revisar" && <PanelRevisar alCambiar={contar} />}
     </>
   );
 }

@@ -226,24 +226,6 @@ export interface PruebaMercadoPago {
   }[];
 }
 
-export interface PruebaComprobante {
-  lectura: {
-    es_comprobante: boolean;
-    legible: boolean;
-    fecha_hora: string | null;
-    monto_centavos: number | null;
-    nombre_pagador: string | null;
-    cuit_pagador: string | null;
-    banco_origen: string | null;
-    numero_operacion: string | null;
-    observaciones: string | null;
-  };
-  resultado: "CONFIRMAR" | "REVISAR";
-  por?: "NUMERO_OPERACION" | "CUIT";
-  mpPagoId?: string;
-  codigo?: string;
-  motivo?: string;
-}
 
 export interface Jugador {
   id: string;
@@ -301,6 +283,31 @@ export interface CuotaJugador {
   motivoAnulacion: string | null;
 }
 
+export interface EstadoCuenta {
+  fechaCorte: string | null;
+  ultimaLectura: string | null;
+  conectada: boolean;
+  paraRevisar: number;
+}
+export interface TransferenciaParaRevisar {
+  mpPagoId: string;
+  montoCentavos: string;
+  fecha: string;
+  cuitPagador: string | null;
+  dniPagador: string | null;
+  motivo: string | null;
+  jugadorSugerido: { id: string; nombre: string } | null;
+}
+export interface TransferenciaLeida {
+  mpPagoId: string;
+  montoCentavos: string;
+  fecha: string;
+  estado: "CONFIRMADA" | "REVISAR" | "RESUELTA";
+  resolucion: "CUOTA_AUTO" | "CUOTA_MANUAL" | "YA_REGISTRADA" | "OTRO_INGRESO" | "NO_ES_DEL_PLANTEL" | null;
+  jugador: string | null;
+  nota: string | null;
+}
+
 type ItemParaEnviar = { descripcion: string; cantidad?: string; categoria: Categoria; subtotalCentavos: string };
 
 export const api = {
@@ -314,7 +321,7 @@ export const api = {
   crearAdmin: (datos: { nombre: string; email: string; telefono?: string; contrasena: string }) =>
     pedir<{ admin: AdminListado }>("POST", "/admins", datos),
   desactivarAdmin: (id: string) => pedir<{ admin: AdminListado }>("POST", `/admins/${id}/desactivar`),
-  jugadores: (filtro: { estado: "ACTIVO" | "BAJA"; buscar: string }) =>
+  jugadores: (filtro: { estado: "ACTIVO" | "BAJA" | "TODOS"; buscar: string }) =>
     pedir<{ jugadores: Jugador[]; totales: { activos: number; baja: number } }>(
       "GET",
       `/jugadores?${new URLSearchParams({ estado: filtro.estado, ...(filtro.buscar.trim() ? { buscar: filtro.buscar.trim() } : {}) }).toString()}`,
@@ -339,8 +346,16 @@ export const api = {
   anularCuota: (id: string, motivo: string) => pedir<unknown>("POST", `/cuotas/${id}/anular`, { motivo }),
   cobrarEfectivo: (jugadorId: string, cuotas: string[]) => pedir<unknown>("POST", `/jugadores/${jugadorId}/pagos-efectivo`, { cuotas }),
   fijarAlias: (alias: string) => pedir<unknown>("PUT", "/parametros/alias", { alias }),
+  estadoCuenta: () => pedir<EstadoCuenta>("GET", "/cuenta/estado"),
+  leerCuentaAhora: () => pedir<{ estado: string; nuevas?: number; confirmadas?: number; paraRevisar?: number; motivo?: string }>("POST", "/cuenta/leer-ahora"),
+  fijarFechaCorte: (fecha: string) => pedir<unknown>("PUT", "/cuenta/fecha-corte", { fecha }),
+  transferenciasParaRevisar: () => pedir<{ transferencias: TransferenciaParaRevisar[] }>("GET", "/transferencias/revisar"),
+  ultimasTransferencias: () => pedir<{ transferencias: TransferenciaLeida[] }>("GET", "/transferencias"),
+  asignarTransferencia: (id: string, jugadorId: string, cuotas: string[]) => pedir<unknown>("POST", `/transferencias/${id}/jugador`, { jugadorId, cuotas }),
+  transferenciaYaRegistrada: (id: string, nota: string) => pedir<unknown>("POST", `/transferencias/${id}/ya-registrada`, { nota }),
+  transferenciaOtroIngreso: (id: string, nota: string) => pedir<unknown>("POST", `/transferencias/${id}/otro-ingreso`, { nota }),
+  transferenciaNoEsDelPlantel: (id: string, nota: string) => pedir<unknown>("POST", `/transferencias/${id}/no-es-del-plantel`, { nota }),
   probarMercadoPago: () => pedir<PruebaMercadoPago>("GET", "/mercadopago/prueba"),
-  probarComprobante: (imagenBase64: string) => pedir<PruebaComprobante>("POST", "/verificacion/probar", { imagenBase64 }),
 
   sabadoActual: () => pedir<DetalleSabado>("GET", "/sabados/actual"),
   sabado: (id: string) => pedir<DetalleSabado>("GET", `/sabados/${id}`),

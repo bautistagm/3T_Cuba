@@ -43,6 +43,20 @@ La app necesita una clave para **consultar** lo que entra a tu cuenta. Mercado P
 4. **Nunca** pegues esa clave en un chat, un mail ni en GitHub. Si alguna vez se filtra, en la misma pantalla de credenciales se puede renovar.
 5. Para probar: mandate una transferencia de $1 desde otra cuenta o banco a tu alias, y en la app andá a **Ajustes** → **Mercado Pago** → **Probar conexión**.
 
+## 6. Lectura automática de la cuenta (cada 10 minutos, gratis)
+
+La app reconoce sola las cuotas por el DNI de quien transfiere. Para que lea la cuenta aunque nadie la abra, un servicio gratis (cron-job.org) la "despierta" cada 10 minutos. De paso, eso evita que la app se duerma.
+
+1. **Fecha de corte:** en la app, **Ajustes → Mercado Pago → Fijar la fecha de corte**: el día desde el que tu Mercado Pago es solo del plantel. Sin esa fecha la app no lee nada.
+2. **Clave secreta:** en Render → **plantel-3t** → **Environment** → **Add Environment Variable**. *Key:* `CLAVE_LECTURA`. *Value:* una frase larga inventada, de **más de 24 letras y números**, sin espacios (por ejemplo, cuatro palabras y números pegados). Guardala con **Save**. No la pegues en ningún chat.
+3. Creá una cuenta gratis en **https://cron-job.org** y tocá **Create cronjob**:
+   - *Title:* `3T – leer la cuenta`
+   - *URL:* `https://plantel-3t.onrender.com/api/cuenta/leer`
+   - *Execution schedule:* cada **10 minutos**.
+   - En **Advanced**: *Request method* **POST**, y en *Headers* agregá uno con *Key* `x-clave-lectura` y *Value* la misma clave del paso 2.
+   - Guardá y tocá **Test run**: tiene que responder algo como `{"estado":"LEIDA",...}`. Si responde `CLAVE_INCORRECTA`, la clave no es igual a la de Render.
+4. Cuando la app se despierta puede tardar hasta un minuto: alguna ejecución puede marcar "timeout", pero la siguiente anda.
+
 ## Para saber
 
 - En el plan gratis, si nadie usa la app por 15 minutos, se "duerme" y el primer ingreso tarda hasta un minuto. Antes de usarla con plata real se agrega un aviso cada 14 minutos para mantenerla despierta.

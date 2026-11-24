@@ -187,7 +187,7 @@ export async function anularCuota(db: BaseDeDatos, actor: ActorAdmin, cargoId: s
 // ---------------------------------------------------------------------------
 
 /** Cuotas pendientes de un jugador, de la más vieja a la más nueva, bloqueadas para este cobro. */
-async function pendientesBloqueadas(tx: Transaccion, jugadorId: string): Promise<(Cargo & { anio: number; mes: number })[]> {
+export async function pendientesBloqueadas(tx: Transaccion, jugadorId: string): Promise<(Cargo & { anio: number; mes: number })[]> {
   const filas = await tx
     .select({ cargo: cargos, anio: periodosCuota.anio, mes: periodosCuota.mes })
     .from(cargos)

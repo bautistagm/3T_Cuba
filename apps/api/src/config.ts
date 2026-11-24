@@ -13,6 +13,11 @@ const esquemaConfig = z.object({
   CODIGO_INSTALACION: z.string().min(12, "CODIGO_INSTALACION tiene que tener al menos 12 caracteres.").optional(),
   /** Carpeta con las pantallas ya compiladas (apps/web/dist). Si no está, la API funciona sola. */
   CARPETA_WEB: z.string().optional(),
+  /**
+   * Clave secreta para que el servicio externo (cron-job.org) le pida a la app que lea la cuenta cada 10 minutos.
+   * Va en el encabezado "x-clave-lectura". Sin ella, la cuenta solo se lee cuando alguien abre la app.
+   */
+  CLAVE_LECTURA: z.string().min(24).optional(),
   /** Clave gratis de Google AI Studio para leer tickets. Sin ella, los tickets quedan para cargar a mano. */
   GEMINI_API_KEY: z.string().min(10).optional(),
   /**

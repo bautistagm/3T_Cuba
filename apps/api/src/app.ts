@@ -30,6 +30,7 @@ import { rutasCaja } from "./rutas/caja.js";
 import { rutasMercadoPago } from "./rutas/mercadopago.js";
 import { rutasJugadores } from "./rutas/jugadores.js";
 import { rutasCuotas } from "./rutas/cuotas.js";
+import { rutasTransferencias } from "./rutas/transferencias.js";
 import { ErrorMercadoPago } from "./mercadopago/cliente.js";
 import { buscarEntradas } from "./mercadopago/movimientos.js";
 import { crearLectorComprobantesGemini, lectorComprobantesSinIa, type LectorComprobantes } from "./ia/lectorComprobantes.js";
@@ -89,7 +90,7 @@ export async function construirApp(opciones: {
   const enProduccion = config.NODE_ENV === "production";
 
   const app = Fastify({
-    logger: config.NODE_ENV === "test" ? false : { level: enProduccion ? "info" : "debug", redact: ["req.headers.cookie"] },
+    logger: config.NODE_ENV === "test" ? false : { level: enProduccion ? "info" : "debug", redact: ["req.headers.cookie", 'req.headers["x-clave-lectura"]'] },
     trustProxy: enProduccion,
     bodyLimit: 1024 * 1024,
   });
@@ -291,6 +292,7 @@ export async function construirApp(opciones: {
       rutasCaja(api, db, lectorTickets, asistente);
       rutasJugadores(api, db);
       rutasCuotas(api, db);
+      rutasTransferencias(api, db, verificacion.buscarEntradas, config.CLAVE_LECTURA, config.MP_ACCESS_TOKEN !== undefined);
       rutasMercadoPago(api, db, config.MP_ACCESS_TOKEN, verificacion, opciones.fetchMercadoPago);
 
       api.setNotFoundHandler((_peticion, respuesta) =>
