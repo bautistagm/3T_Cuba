@@ -858,7 +858,12 @@ export const entradas = pgTable(
     codigo: text().notNull().unique(),
     estado: estadoEntrada().notNull().default("PENDIENTE_PAGO"),
     usadaEn: momento(),
+    /** Nombre que escribió quien la marcó en la puerta. */
     usadaPor: text(),
+    /** Identificador del ingreso que mandó el celular de la puerta (para no contarlo dos veces al reintentar). */
+    ingresoId: uuid(),
+    /** Si entró buscando por nombre o DNI, sin escanear el QR. */
+    ingresoManual: boolean().notNull().default(false),
     ...tiempos,
   },
   (t) => [

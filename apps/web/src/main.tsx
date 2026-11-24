@@ -19,6 +19,7 @@ import { PantallaCaja } from "./pantallas/Caja";
 import { PantallaCocina } from "./pantallas/Cocina";
 import { Inicio } from "./pantallas/Inicio";
 import { PaginaPrivacidad } from "./pantallas/Privacidad";
+import { PaginaPuerta } from "./pantallas/Puerta";
 import { PaginaDelResponsable } from "./pantallas/Responsable";
 import { PantallaSabado } from "./pantallas/Sabado";
 import { SeccionEnConstruccion } from "./pantallas/Seccion";
@@ -69,13 +70,14 @@ function App() {
 /** Las páginas públicas (link del responsable) no necesitan sesión. */
 function Raiz() {
   const { pathname } = useLocation();
-  if (pathname.startsWith("/cocina/") || pathname.startsWith("/entradas/") || pathname.startsWith("/mi-entrada/") || pathname === "/privacidad") {
+  if (pathname.startsWith("/cocina/") || pathname.startsWith("/entradas/") || pathname.startsWith("/mi-entrada/") || pathname === "/privacidad" || pathname.startsWith("/puerta/")) {
     return (
       <Routes>
         <Route path="/cocina/:token" element={<PaginaDelResponsable />} />
         <Route path="/entradas/:token" element={<PaginaComprarEntradas />} />
         <Route path="/mi-entrada/:codigo" element={<PaginaMiEntrada />} />
         <Route path="/privacidad" element={<PaginaPrivacidad />} />
+        <Route path="/puerta/:token" element={<PaginaPuerta />} />
       </Routes>
     );
   }

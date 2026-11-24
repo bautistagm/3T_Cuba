@@ -134,6 +134,20 @@
       "when": 1795542007906,
       "tag": "0018_notificaciones",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795546047169,
+      "tag": "0019_entradas_ingreso",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795546047975,
+      "tag": "0020_protecciones_puerta",
+      "breakpoints": true
     }
   ]
 }
