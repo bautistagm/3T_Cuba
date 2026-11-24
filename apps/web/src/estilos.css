@@ -266,3 +266,15 @@ fieldset.opciones { border: none; padding: 0; margin: 0; display: flex; flex-dir
 .lectura-comprobante div { display: flex; justify-content: space-between; gap: 1rem; }
 .lectura-comprobante dt { color: var(--texto-2); }
 .lectura-comprobante dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+
+/* Jugadores */
+.lista-jugadores li { display: block; padding: 0; }
+.fila-jugador { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; background: none; border: none; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.fila-jugador .flecha { color: var(--texto-2); font-size: 14px; }
+.detalle-jugador { margin-bottom: 12px; }
+.detalle-jugador dl { margin: 0; display: grid; gap: 6px; }
+.detalle-jugador dl div { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.detalle-jugador dt { color: var(--texto-2); }
+.detalle-jugador dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+input[type="search"] { width: 100%; }
+.lista-importacion li { align-items: flex-start; }

@@ -52,7 +52,7 @@ export function Inicio() {
 
       <main className="contenido">
         <TarjetaSeccion a="/sabados" titulo="Sábados" desc="Invitados del tercer tiempo y la cocina de la camada" chip="Listo para usar" chipColor="azul" dibujo={<DibujoSabados />} />
-        <TarjetaSeccion a="/pagos" titulo="Pagos" desc="Cuotas, comprobantes y efectivo" chip="En construcción" dibujo={<DibujoPagos />} />
+        <TarjetaSeccion a="/pagos" titulo="Pagos" desc="Jugadores, cuotas y quién debe" chip="Jugadores listos" chipColor="naranja" dibujo={<DibujoPagos />} />
         <TarjetaSeccion a="/fiestas" titulo="Fiestas" desc="Entradas para gente de afuera y control en la puerta" chip="En construcción" dibujo={<DibujoFiestas />} />
         <TarjetaSeccion a="/caja" titulo="Caja" desc="Todo lo que entra y sale: saldo, gastos y efectivo" chip="Listo para usar" chipColor="azul" dibujo={<DibujoCaja />} />
         <TarjetaSeccion a="/stock" titulo="Stock" desc="Almacén, cierre del sábado y proveedores" chip="Llega en 2027" dibujo={<DibujoStock />} />
