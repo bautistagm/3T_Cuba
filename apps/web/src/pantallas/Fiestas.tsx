@@ -184,6 +184,9 @@ export function PantallaFiesta() {
             <span><span className="ayuda">Recaudado</span><strong>{pesos(d.recaudadoCentavos)}</strong></span>
           </div>
           {d.fiesta.estado === "VENTA_CERRADA" && <p className="aviso error">La venta está cerrada.</p>}
+          {esDueno && !d.emailConfigurado && (
+            <p className="aviso error">Los emails con las entradas todavía no salen: falta cargar la contraseña de aplicación de plantelcuba@gmail.com en Render. Mientras tanto, cada comprador ve sus QR en su página.</p>
+          )}
           {esDueno && (
             <button type="button" className="boton secundario chico"
               onClick={() => window.confirm(d.fiesta.estado === "A_LA_VENTA" ? "¿Cerrar la venta? Los links dejan de vender." : "¿Volver a abrir la venta?") &&
@@ -230,9 +233,20 @@ export function PantallaFiesta() {
                 <span className="datos">
                   <strong>{e.nombre}</strong>
                   <span>DNI {formatearDni(e.dni)}{e.usadaEn ? ` · entró ${fechaFiesta(e.usadaEn)}${e.usadaPor ? ` (${e.usadaPor})` : ""}` : ""}</span>
+                  {(e.estado === "VALIDA" || e.estado === "USADA") && <EstadoEmail email={e.email} estado={d.emails[e.compraId]} />}
                 </span>
                 <span className="acciones-cuota">
                   <span className={`chip ${ESTADO_ENTRADA[e.estado].chip}`}>{ESTADO_ENTRADA[e.estado].texto}</span>
+                  {esDueno && e.estado === "VALIDA" && (
+                    <button type="button" className="enlace"
+                      onClick={() => {
+                        const otro = window.prompt(`Reenviar las entradas de esta compra. ¿A qué email? (dejalo así para mandarlas al mismo)`, e.email);
+                        if (otro === null) return;
+                        void hacer(() => api.reenviarEntradas(e.compraId, otro.trim() && otro.trim() !== e.email ? otro.trim() : undefined), "Email con las entradas en camino.");
+                      }}>
+                      reenviar
+                    </button>
+                  )}
                   {esDueno && e.estado === "PENDIENTE_PAGO" && (
                     <button type="button" className="enlace"
                       onClick={() => window.confirm(`¿Anular la compra de ${e.nombre}? (nunca se pagó)`) && void hacer(() => api.anularCompraEntradas(e.compraId), "Compra anulada.")}>
@@ -248,4 +262,12 @@ export function PantallaFiesta() {
       </main>
     </>
   );
+}
+
+function EstadoEmail(props: { email: string; estado: DetalleFiesta["emails"][string] | undefined }) {
+  const e = props.estado;
+  if (!e) return <span>Email: {props.email}</span>;
+  if (e.estado === "ENVIADA") return <span>✉️ Enviado a {props.email}</span>;
+  if (e.estado === "PENDIENTE") return <span>✉️ Email pendiente a {props.email}{e.error ? ` (reintentando: ${e.error})` : ""}</span>;
+  return <span className="texto-error">✉️ No se pudo mandar a {props.email}{e.error ? `: ${e.error}` : ""}</span>;
 }

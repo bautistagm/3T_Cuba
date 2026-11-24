@@ -867,3 +867,28 @@ export const entradas = pgTable(
     check("entradas_dni_valido", sql`${t.dni} ~ '^[1-9][0-9]{6,7}$'`),
   ],
 );
+
+// ---------------------------------------------------------------------------
+// Emails pendientes (etapa 9.2). Se anotan dentro de la misma transacción que el pago y se mandan después,
+// con reintentos: si Gmail falla un rato, no se pierde ningún email.
+// ---------------------------------------------------------------------------
+
+export const estadoNotificacion = pgEnum("estado_notificacion", ["PENDIENTE", "ENVIADA", "FALLIDA"]);
+
+export const notificaciones = pgTable(
+  "notificaciones",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    /** Por ahora solo las entradas de una compra. */
+    tipo: text().notNull(),
+    compraId: uuid().references(() => comprasEntradas.id),
+    destinatario: text().notNull(),
+    estado: estadoNotificacion().notNull().default("PENDIENTE"),
+    intentos: integer().notNull().default(0),
+    ultimoError: text(),
+    proximoIntento: momento().notNull().defaultNow(),
+    enviadaEn: momento(),
+    ...tiempos,
+  },
+  (t) => [index("notificaciones_pendientes").on(t.estado, t.proximoIntento), index("notificaciones_compra").on(t.compraId)],
+);

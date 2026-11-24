@@ -30,3 +30,7 @@ services:
         sync: false
       - key: CLAVE_LECTURA
         sync: false
+      - key: EMAIL_USUARIO
+        value: plantelcuba@gmail.com
+      - key: EMAIL_CLAVE_APP
+        sync: false

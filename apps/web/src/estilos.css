@@ -307,3 +307,4 @@ input[type="search"] { width: 100%; }
 .entrada { align-items: center; text-align: center; }
 .qr { width: 240px; max-width: 80vw; margin: 8px auto; background: #fff; padding: 8px; border-radius: 12px; }
 .qr svg { display: block; width: 100%; height: auto; }
+.texto-error { color: var(--rojo, #b42318); }
