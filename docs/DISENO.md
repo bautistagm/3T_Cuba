@@ -46,8 +46,12 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 - **Va a "Revisar" (lo resuelve el dueño):**
   - Si el DNI no coincide con nadie (por ejemplo, pagó desde la cuenta del papá o de la novia): la app **pregunta de quién es** esa transferencia. Siempre se revisa a mano; la app no "aprende" CUILs de otras personas.
   - Si coincide el DNI pero el **monto es distinto** (dos meses juntos, la cuota de un amigo): a "Revisar", el dueño decide a qué corresponde. *(Supuesto de Claude, el dueño no lo contestó; se puede cambiar.)*
-  - Si entra una transferencia de alguien que no es del plantel: solo aparece en "Revisar" si es **justo por el monto de la cuota o de una entrada** (por si es del plantel). Si no, la app la ignora y **no la guarda**: los movimientos personales del dueño no quedan en la app. *(Supuesto de Claude, el dueño no lo contestó; se puede cambiar.)*
+  - Si entra una transferencia que no coincide con nadie, siempre va a "Revisar" para que el dueño diga de quién es (o que no es del plantel). Esto se puede porque la cuenta es **exclusiva del plantel** (ver abajo).
+  - Si la transferencia viene del **DNI del dueño** (por ejemplo, cuando deposita efectivo del plantel desde su otra cuenta), la app la propone como **depósito de efectivo** de su caja, no como pago de un jugador.
 - La app solo guarda las transferencias que confirmaron un pago o que están en "Revisar".
+- **Cuenta exclusiva del plantel (decisión del dueño, 24/11/2026):** la cuenta de Mercado Pago del dueño pasa a ser **solo del plantel**; su plata personal va a Brubank. El alias se cambia por uno del plantel. El dueño informa la **fecha de corte**: la app ignora todo lo anterior a esa fecha.
+  - Pagar cosas personales con la **tarjeta de crédito** cargada en Mercado Pago no afecta: no usa el saldo y la app solo mira lo que entra. No usar el **saldo**, "Cuotas sin tarjeta" ni préstamos de Mercado Pago (se descuentan del saldo).
+  - Como todo el saldo es del plantel, la **reserva** deja de hacer falta: el control de caja compara contra el saldo de la cuenta.
 - Lo que ya quedó hecho en la etapa 6 sigue sirviendo: la conexión de solo consulta con Mercado Pago y las protecciones de la base (una transferencia no se usa dos veces, no se borra). El motor de comprobantes con IA (6.2) queda como **respaldo**, sin usarse por defecto.
 - Para que el chequeo cada 15 minutos funcione con la app dormida (plan gratis de Render), un servicio gratis externo (cron-job.org o similar) la "despierta" cada 15 minutos. Lo mismo la mantiene despierta para quien la usa.
 
