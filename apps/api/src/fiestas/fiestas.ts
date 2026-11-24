@@ -17,6 +17,7 @@ import { aliasDelPlantel } from "../cuotas/cuotas.js";
 import type { BaseDeDatos, Ejecutor, Transaccion } from "../db/cliente.js";
 import { comprasEntradas, entradas, fiestas, pagos, tiposEntrada } from "../db/esquema.js";
 import { ErrorNegocio, noExiste, soloDueno } from "../errores.js";
+import { anotarEmailDeEntradas } from "../email/entradas.js";
 
 type Compra = typeof comprasEntradas.$inferSelect;
 const token = (bytes: number) => randomBytes(bytes).toString("base64url");
@@ -336,6 +337,8 @@ export async function confirmarCompra(tx: Transaccion, actor: Actor, compraId: s
   if (!pago) throw new Error("No se pudo registrar el pago");
   await tx.update(comprasEntradas).set({ estado: "PAGADA", pagoId: pago.id }).where(eq(comprasEntradas.id, compraId));
   await tx.update(entradas).set({ estado: "VALIDA" }).where(and(eq(entradas.compraId, compraId), eq(entradas.estado, "PENDIENTE_PAGO")));
+  // El email con los QR se anota acá (misma transacción) y se manda después, con reintentos.
+  await anotarEmailDeEntradas(tx, compraId, compra.email);
   await registrarAuditoria(tx, actor, {
     accion: "ENTRADAS_PAGADAS",
     entidad: "compras_entradas",

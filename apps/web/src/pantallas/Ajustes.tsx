@@ -145,6 +145,7 @@ function AjustesDelDueno() {
         )}
         <MiContrasena />
         <PanelMercadoPago />
+        <EmailDePrueba />
       </main>
     </>
   );
@@ -247,6 +248,30 @@ function MiContrasena() {
           <button className="boton secundario" type="button" onClick={() => setAbierto(false)}>Cancelar</button>
         </form>
       )}
+    </section>
+  );
+}
+
+/** Prueba de los emails de las entradas (dueño). */
+function EmailDePrueba() {
+  const [estado, setEstado] = useState<{ tipo: "ok" | "error"; texto: string } | null>(null);
+  const [mandando, setMandando] = useState(false);
+  return (
+    <section className="tarjeta" aria-labelledby="titulo-email">
+      <h2 id="titulo-email">Emails de las entradas</h2>
+      <p className="ayuda">Salen desde plantelcuba@gmail.com. Mandate uno de prueba para ver si está bien configurado.</p>
+      <button type="button" className="boton secundario" disabled={mandando}
+        onClick={() => {
+          setMandando(true);
+          setEstado(null);
+          api.emailDePrueba()
+            .then((r) => setEstado({ tipo: "ok", texto: `Listo: te mandamos un email a ${r.enviadoA}. Fijate en spam si no lo ves.` }))
+            .catch((e: unknown) => setEstado({ tipo: "error", texto: e instanceof ErrorApi ? e.message : "No se pudo mandar." }))
+            .finally(() => setMandando(false));
+        }}>
+        {mandando ? "Mandando…" : "Mandarme un email de prueba"}
+      </button>
+      {estado && <p className={`aviso ${estado.tipo}`} role="status">{estado.texto}</p>}
     </section>
   );
 }

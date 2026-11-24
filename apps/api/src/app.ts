@@ -34,6 +34,7 @@ import { rutasJugadores } from "./rutas/jugadores.js";
 import { rutasCuotas } from "./rutas/cuotas.js";
 import { rutasTransferencias } from "./rutas/transferencias.js";
 import { rutasFiestas } from "./rutas/fiestas.js";
+import { crearEnviadorGmail, enviarPendientes, type Enviador } from "./email/entradas.js";
 import { ErrorMercadoPago } from "./mercadopago/cliente.js";
 import { buscarEntradas } from "./mercadopago/movimientos.js";
 import { crearLectorComprobantesGemini, lectorComprobantesSinIa, type LectorComprobantes } from "./ia/lectorComprobantes.js";
@@ -71,6 +72,8 @@ export async function construirApp(opciones: {
   lectorTickets?: LectorTickets;
   asistente?: AsistenteIa;
   lectorComprobantes?: LectorComprobantes;
+  /** Solo para tests: reemplaza el envío real de emails. */
+  enviadorEmail?: Enviador;
   /** Solo para tests: reemplaza la conexión real con Mercado Pago. */
   fetchMercadoPago?: typeof fetch;
 }): Promise<FastifyInstance> {
@@ -84,6 +87,7 @@ export async function construirApp(opciones: {
   const lectorComprobantes =
     opciones.lectorComprobantes ??
     (config.GEMINI_API_KEY ? crearLectorComprobantesGemini({ apiKey: config.GEMINI_API_KEY, modelos: config.GEMINI_MODELOS }) : lectorComprobantesSinIa);
+  const enviador = config.EMAIL_USUARIO && config.EMAIL_CLAVE_APP ? (opciones.enviadorEmail ?? crearEnviadorGmail(config.EMAIL_USUARIO, config.EMAIL_CLAVE_APP)) : (opciones.enviadorEmail ?? null);
   const claveMp = config.MP_ACCESS_TOKEN;
   const fetchMp = opciones.fetchMercadoPago;
   const verificacion: DependenciasVerificacion = {
@@ -97,6 +101,10 @@ export async function construirApp(opciones: {
     trustProxy: enProduccion,
     bodyLimit: 1024 * 1024,
   });
+
+  /** Manda los emails pendientes sin esperar (si falla, se reintenta en la próxima). */
+  const despacharEmails = (): Promise<unknown> =>
+    enviarPendientes(db, enviador, config.URL_PUBLICA).catch((error: unknown) => app.log.error({ error }, "No se pudieron mandar los emails"));
 
   await app.register(helmet, {
     contentSecurityPolicy: {
@@ -310,8 +318,29 @@ export async function construirApp(opciones: {
       rutasCaja(api, db, lectorTickets, asistente);
       rutasJugadores(api, db);
       rutasCuotas(api, db);
-      rutasFiestas(api, db, verificacion.buscarEntradas);
-      rutasTransferencias(api, db, verificacion.buscarEntradas, config.CLAVE_LECTURA, config.MP_ACCESS_TOKEN !== undefined);
+      rutasFiestas(api, db, verificacion.buscarEntradas, despacharEmails, enviador !== null);
+
+      /** El dueño se manda un email de prueba para ver si Gmail quedó bien configurado. */
+      api.post("/email/prueba", { config: { rateLimit: { max: 3, timeWindow: "1 minute" } } }, async (peticion) => {
+        const dueno = requiereDueno(peticion);
+        if (!enviador) {
+          throw new ErrorHttp(409, "EMAIL_SIN_CONFIGURAR", "Falta cargar EMAIL_USUARIO y EMAIL_CLAVE_APP en Render.");
+        }
+        try {
+          await enviador({
+            para: dueno.email,
+            asunto: "Prueba de email – 3T",
+            html: "<p>¡Funciona! Los emails con las entradas van a salir desde esta casilla.</p>",
+            texto: "¡Funciona! Los emails con las entradas van a salir desde esta casilla.",
+            adjuntos: [],
+          });
+        } catch (error) {
+          const detalle = error instanceof Error ? error.message.slice(0, 200) : "error desconocido";
+          throw new ErrorHttp(502, "EMAIL_FALLO", `Gmail no aceptó el envío. Revisá la contraseña de aplicación. (${detalle})`);
+        }
+        return { enviadoA: dueno.email };
+      });
+      rutasTransferencias(api, db, verificacion.buscarEntradas, config.CLAVE_LECTURA, config.MP_ACCESS_TOKEN !== undefined, despacharEmails);
       rutasMercadoPago(api, db, config.MP_ACCESS_TOKEN, verificacion, opciones.fetchMercadoPago);
 
       api.setNotFoundHandler((_peticion, respuesta) =>

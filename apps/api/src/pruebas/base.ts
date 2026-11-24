@@ -33,5 +33,5 @@ export const configDePrueba: Config = {
   DATABASE_URL: "postgresql://ignorado/test",
   SESION_DIAS: 30,
   CODIGO_INSTALACION: "codigo-de-prueba-123",
-  GEMINI_MODELOS: [],
+  GEMINI_MODELOS: [], URL_PUBLICA: "https://3t.ejemplo.com",
 };

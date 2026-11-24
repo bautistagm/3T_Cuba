@@ -182,7 +182,7 @@ export function PaginaMiEntrada() {
         )}
         {compra?.estado === "PAGADA" && (
           <>
-            <p className="aviso ok" role="status">¡Listo! Tu pago se acreditó. Mostrá el QR en la puerta junto con tu DNI.</p>
+            <p className="aviso ok" role="status">¡Listo! Tu pago se acreditó. Mostrá el QR en la puerta junto con tu DNI. También te lo mandamos por email desde plantelcuba@gmail.com (fijate en spam).</p>
             {compra.entradas.map((e) => (
               <section className="tarjeta entrada" key={e.dni}>
                 <h2>{e.nombre}</h2>

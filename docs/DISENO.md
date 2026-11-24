@@ -224,7 +224,7 @@ Los jugadores reales se cargan en **febrero de 2027**. Hasta entonces se constru
 | 6 | ✅ Conexión con Mercado Pago | Conexión de solo consulta, prueba con una transferencia real y protecciones (una transferencia confirma un solo pago). **Decisión del dueño (24/11/2026):** la verificación es automática por DNI, sin comprobantes; se termina junto con jugadores y cuotas, que traen la lista de DNIs. |
 | 7 | ✅ Jugadores | Alta, edición, baja, eliminación e importación desde el Formulario de Google con DNI (se usa en febrero). Los admins dan de alta y corrigen contacto; el DNI, la baja, la eliminación y la importación son del dueño. La auditoría registra qué campos cambiaron, sin guardar datos personales. |
 | 8 | ✅ Cuotas y pagos | **8.1** Meses que abre el dueño, cuota de cada jugador, cobro en efectivo (uno o varios meses), anulaciones, quién debe con botón de WhatsApp y alias del plantel. **8.2** Lectura automática de la cuenta cada 10 minutos y al abrir la app, reconocimiento por DNI y "¿De quién es esta transferencia?". Detalle original: **verificación automática por DNI**, bandeja "Revisar" (¿de quién es esta transferencia?), anulaciones y lista de deudores |
-| 9 | Fiestas | **9.1 ✅** Creación, links de venta, compra pública con DNI, verificación automática y listas. **9.2** Email con el QR desde plantelcuba@gmail.com. **9.3** Puerta: link para escanear desde cualquier celular. **9.4** Tandas. |
+| 9 | Fiestas | **9.1 ✅** Creación, links de venta, compra pública con DNI, verificación automática y listas. **9.2 ✅** Email con el QR desde plantelcuba@gmail.com (se anota junto con el pago y se manda después, con reintentos; el dueño puede reenviar). **9.3** Puerta: link para escanear desde cualquier celular. **9.4** Tandas. |
 | 10 | Stock y proveedores | 2027 |
 
 Cada etapa termina con: tests pasando, revisión del dueño y prueba en un entorno de prueba antes de pasar a la siguiente.
@@ -232,7 +232,7 @@ Cada etapa termina con: tests pasando, revisión del dueño y prueba en un entor
 ## 7. Pendientes para decidir más adelante
 
 - Monto de cada cuota, precio de invitados, alias de la cuenta (antes de usar plata real; se cargan desde la app).
-- Contraseña de aplicación de Google para enviar desde plantelcuba@gmail.com (Etapa 9, Fiestas).
+- Contraseña de aplicación de Google para enviar desde plantelcuba@gmail.com: la crea el dueño y la carga en Render (ver `docs/PUBLICAR.md`, paso 7).
 - Consulta con un contador sobre Ingresos Brutos de la cuenta personal (antes de usar plata real).
 - ✅ Cambio de contraseña propio (todos, en Ajustes) y contraseña nueva para un administrador (el dueño). Al cambiarla se cierran las otras sesiones.
 - ✅ Backups nocturnos cifrados con GitHub Actions, restauración probada (ver `docs/BACKUPS.md`). Falta que el dueño cargue los dos secretos en GitHub.

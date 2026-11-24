@@ -334,6 +334,9 @@ export interface DetalleFiesta {
     telefono: string | null;
   }[];
   recaudadoCentavos: string;
+  emailConfigurado: boolean;
+  /** Estado del último email de cada compra (por id de compra). */
+  emails: Record<string, { estado: "PENDIENTE" | "ENVIADA" | "FALLIDA"; error: string | null; enviadaEn: string | null }>;
 }
 export interface VentaPublica {
   fiesta: { nombre: string; fechaHora: string; lugar: string | null };
@@ -418,6 +421,7 @@ export const api = {
   fiesta: (id: string) => pedir<DetalleFiesta>("GET", `/fiestas/${id}`),
   ventaFiesta: (id: string, abierta: boolean) => pedir<unknown>("POST", `/fiestas/${id}/venta`, { abierta }),
   nuevoLinkPuerta: (id: string) => pedir<{ tokenPuerta: string }>("POST", `/fiestas/${id}/link-puerta`),
+  reenviarEntradas: (compraId: string, email?: string) => pedir<unknown>("POST", `/compras-entradas/${compraId}/reenviar`, email ? { email } : {}),
   anularCompraEntradas: (id: string) => pedir<unknown>("POST", `/compras-entradas/${id}/anular`),
   comprasParaTransferencia: (mpPagoId: string) => pedir<{ compras: CompraPendiente[] }>("GET", `/transferencias/${mpPagoId}/compras`),
   asignarTransferenciaACompra: (mpPagoId: string, compraId: string) => pedir<unknown>("POST", `/transferencias/${mpPagoId}/compra`, { compraId }),
@@ -425,6 +429,7 @@ export const api = {
   comprarEntradas: (token: string, datos: { entradas: { nombre: string; dni: string }[]; email: string; telefono?: string }) =>
     pedir<{ codigoConsulta: string }>("POST", `/publico/venta/${token}/compras`, datos),
   estadoCompra: (codigo: string) => pedir<EstadoCompra>("GET", `/publico/compras/${codigo}`),
+  emailDePrueba: () => pedir<{ enviadoA: string }>("POST", "/email/prueba"),
   probarMercadoPago: () => pedir<PruebaMercadoPago>("GET", "/mercadopago/prueba"),
 
   sabadoActual: () => pedir<DetalleSabado>("GET", "/sabados/actual"),

@@ -28,19 +28,31 @@ function mismaClave(recibida: unknown, esperada: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-export function rutasTransferencias(api: FastifyInstance, db: BaseDeDatos, buscar: BuscarEntradas | null, claveLectura: string | undefined, conectada: boolean) {
+export function rutasTransferencias(
+  api: FastifyInstance,
+  db: BaseDeDatos,
+  buscar: BuscarEntradas | null,
+  claveLectura: string | undefined,
+  conectada: boolean,
+  despacharEmails: () => Promise<unknown>,
+) {
   /** Lo llama un servicio externo gratis cada 10 minutos (con la clave secreta en el encabezado). */
   api.post("/cuenta/leer", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (peticion) => {
     if (!claveLectura || !mismaClave(peticion.headers["x-clave-lectura"], claveLectura)) {
       throw new ErrorHttp(401, "CLAVE_INCORRECTA", "Falta la clave de lectura o es incorrecta.");
     }
-    return leerCuenta(db, buscar, { siNoSeLeyoHace: 60_000 });
+    const r = await leerCuenta(db, buscar, { siNoSeLeyoHace: 60_000 });
+    // De paso se mandan los emails pendientes (y se reintentan los que fallaron).
+    await despacharEmails();
+    return r;
   });
 
   /** Cuando alguien abre la app: lee si hace más de 2 minutos que no se lee. */
   api.post("/cuenta/leer-ahora", { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (peticion) => {
     requiereSesion(peticion);
-    return leerCuenta(db, buscar, { siNoSeLeyoHace: ESPERA_ENTRE_LECTURAS_MS });
+    const r = await leerCuenta(db, buscar, { siNoSeLeyoHace: ESPERA_ENTRE_LECTURAS_MS });
+    void despacharEmails();
+    return r;
   });
 
   api.get("/cuenta/estado", async (peticion) => {

@@ -19,13 +19,20 @@ import {
 import { asignarACompra, leerCuenta, type BuscarEntradas } from "../verificacion/transferencias.js";
 import { transferenciasRecibidas } from "../db/esquema.js";
 import { eq } from "drizzle-orm";
-import { actorDe, idSchema, requiereSesion } from "./comun.js";
+import { actorDe, ErrorHttp, idSchema, requiereSesion } from "./comun.js";
+import { estadoEmailsDeCompras, reenviarEntradas } from "../email/entradas.js";
 
 const tokenSchema = z.object({ token: z.string().regex(/^[A-Za-z0-9_-]{16,40}$/, "El link no es válido.") });
 const codigoSchema = z.object({ codigo: z.string().regex(/^[A-Za-z0-9_-]{16,40}$/, "El código no es válido.") });
 const mpIdSchema = z.object({ id: z.string().regex(/^\d{4,30}$/, "El número de operación no es válido.") });
 
-export function rutasFiestas(api: FastifyInstance, db: BaseDeDatos, buscar: BuscarEntradas | null) {
+export function rutasFiestas(
+  api: FastifyInstance,
+  db: BaseDeDatos,
+  buscar: BuscarEntradas | null,
+  despacharEmails: () => Promise<unknown>,
+  emailConfigurado: boolean,
+) {
   // --- Administración -------------------------------------------------------
   api.get("/fiestas", async (peticion) => {
     requiereSesion(peticion);
@@ -38,7 +45,13 @@ export function rutasFiestas(api: FastifyInstance, db: BaseDeDatos, buscar: Busc
   });
 
   api.get("/fiestas/:id", async (peticion) => {
-    return detalleFiesta(db, idSchema.parse(peticion.params).id, actorDe(peticion));
+    const detalle = await detalleFiesta(db, idSchema.parse(peticion.params).id, actorDe(peticion));
+    const emails = await estadoEmailsDeCompras(db, [...new Set(detalle.entradas.map((e) => e.compraId))]);
+    return {
+      ...detalle,
+      emailConfigurado,
+      emails: Object.fromEntries(emails),
+    };
   });
 
   api.get("/fiestas/:id/lista.csv", async (peticion, respuesta) => {
@@ -61,6 +74,17 @@ export function rutasFiestas(api: FastifyInstance, db: BaseDeDatos, buscar: Busc
     return { tokenPuerta: f.tokenPuerta };
   });
 
+  api.post("/compras-entradas/:id/reenviar", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (peticion) => {
+    const actor = actorDe(peticion);
+    if (actor.rol !== "DUENO") throw new ErrorHttp(403, "SOLO_DUENO", "Solo el dueño puede reenviar las entradas.");
+    const { email } = z.object({ email: z.string().trim().toLowerCase().email("El email no es válido.").max(120).optional() }).parse(peticion.body ?? {});
+    const r = await reenviarEntradas(db, idSchema.parse(peticion.params).id, email);
+    if (r === null) throw new ErrorHttp(404, "NO_EXISTE", "La compra no existe.");
+    if (r === "NO_PAGADA") throw new ErrorHttp(409, "NO_PAGADA", "Esa compra no está pagada.");
+    await despacharEmails();
+    return { ok: true };
+  });
+
   api.post("/compras-entradas/:id/anular", async (peticion) => {
     await anularCompraPendiente(db, actorDe(peticion), idSchema.parse(peticion.params).id);
     return { ok: true };
@@ -75,7 +99,9 @@ export function rutasFiestas(api: FastifyInstance, db: BaseDeDatos, buscar: Busc
 
   api.post("/transferencias/:id/compra", async (peticion) => {
     const { compraId } = z.object({ compraId: z.string().uuid() }).parse(peticion.body);
-    return { pago: await asignarACompra(db, actorDe(peticion), mpIdSchema.parse(peticion.params).id, compraId) };
+    const pago = await asignarACompra(db, actorDe(peticion), mpIdSchema.parse(peticion.params).id, compraId);
+    void despacharEmails();
+    return { pago };
   });
 
   // --- Público (links que se comparten) -------------------------------------
@@ -94,6 +120,7 @@ export function rutasFiestas(api: FastifyInstance, db: BaseDeDatos, buscar: Busc
     const actual = await estadoDeCompra(db, codigo);
     if (actual.estado === "PENDIENTE_PAGO") {
       await leerCuenta(db, buscar, { siNoSeLeyoHace: 60_000 }).catch(() => undefined);
+      void despacharEmails();
       return estadoDeCompra(db, codigo);
     }
     return actual;

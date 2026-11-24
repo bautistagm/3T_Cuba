@@ -57,6 +57,21 @@ La app reconoce sola las cuotas por el DNI de quien transfiere. Para que lea la 
    - Guardá y tocá **Test run**: tiene que responder algo como `{"estado":"LEIDA",...}`. Si responde `CLAVE_INCORRECTA`, la clave no es igual a la de Render.
 4. Cuando la app se despierta puede tardar hasta un minuto: alguna ejecución puede marcar "timeout", pero la siguiente anda.
 
+## 7. Emails de las entradas (desde plantelcuba@gmail.com, gratis)
+
+Google no deja usar la contraseña normal de la cuenta: hay que crear una **contraseña de aplicación** (16 letras), que sirve solo para mandar emails y se puede borrar cuando quieras.
+
+1. Entrá a **https://myaccount.google.com** con **plantelcuba@gmail.com**.
+2. En **Seguridad**, activá la **Verificación en 2 pasos** (si no estaba). Sin eso, Google no muestra la opción del paso 3.
+3. Entrá a **https://myaccount.google.com/apppasswords**, poné de nombre `3T` y tocá **Crear**. Google muestra 16 letras (en grupos de 4). Copialas.
+4. En Render → **plantel-3t** → **Environment**, agregá dos variables:
+   - `EMAIL_USUARIO` = `plantelcuba@gmail.com`
+   - `EMAIL_CLAVE_APP` = las 16 letras (con o sin espacios, da igual).
+   Guardá con **Save**. No pegues la clave en ningún chat.
+5. En la app: **Ajustes → Emails de las entradas → Mandarme un email de prueba**. Si llega, quedó andando.
+
+Si algún día se filtra, se borra en la misma página del paso 3 y se crea otra. Los emails que no salieron quedan pendientes y se mandan solos cuando la clave vuelve a andar.
+
 ## Para saber
 
 - En el plan gratis, si nadie usa la app por 15 minutos, se "duerme" y el primer ingreso tarda hasta un minuto. Antes de usarla con plata real se agrega un aviso cada 14 minutos para mantenerla despierta.

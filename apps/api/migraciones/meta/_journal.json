@@ -127,6 +127,13 @@
       "when": 1795538959232,
       "tag": "0017_entradas_en_transferencias",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795542007906,
+      "tag": "0018_notificaciones",
+      "breakpoints": true
     }
   ]
 }
