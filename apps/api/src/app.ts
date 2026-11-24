@@ -34,7 +34,8 @@ import { rutasJugadores } from "./rutas/jugadores.js";
 import { rutasCuotas } from "./rutas/cuotas.js";
 import { rutasTransferencias } from "./rutas/transferencias.js";
 import { rutasFiestas } from "./rutas/fiestas.js";
-import { crearEnviadorGmail, enviarPendientes, type Enviador } from "./email/entradas.js";
+import { enviarPendientes, type Enviador } from "./email/entradas.js";
+import { completarConexion, crearEnviadorGmailApi, direccionDeVuelta, ErrorGmail, gmailConectado, linkParaConectar, type ConfigGoogle } from "./email/gmail.js";
 import { ErrorMercadoPago } from "./mercadopago/cliente.js";
 import { buscarEntradas } from "./mercadopago/movimientos.js";
 import { crearLectorComprobantesGemini, lectorComprobantesSinIa, type LectorComprobantes } from "./ia/lectorComprobantes.js";
@@ -87,7 +88,11 @@ export async function construirApp(opciones: {
   const lectorComprobantes =
     opciones.lectorComprobantes ??
     (config.GEMINI_API_KEY ? crearLectorComprobantesGemini({ apiKey: config.GEMINI_API_KEY, modelos: config.GEMINI_MODELOS }) : lectorComprobantesSinIa);
-  const enviador = config.EMAIL_USUARIO && config.EMAIL_CLAVE_APP ? (opciones.enviadorEmail ?? crearEnviadorGmail(config.EMAIL_USUARIO, config.EMAIL_CLAVE_APP)) : (opciones.enviadorEmail ?? null);
+  const configGoogle: ConfigGoogle | null =
+    config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET
+      ? { clientId: config.GOOGLE_CLIENT_ID, clientSecret: config.GOOGLE_CLIENT_SECRET, casilla: config.EMAIL_USUARIO, urlPublica: config.URL_PUBLICA }
+      : null;
+  const enviador: Enviador | null = opciones.enviadorEmail ?? (configGoogle ? crearEnviadorGmailApi(db, configGoogle) : null);
   const claveMp = config.MP_ACCESS_TOKEN;
   const fetchMp = opciones.fetchMercadoPago;
   const verificacion: DependenciasVerificacion = {
@@ -318,16 +323,50 @@ export async function construirApp(opciones: {
       rutasCaja(api, db, lectorTickets, asistente);
       rutasJugadores(api, db);
       rutasCuotas(api, db);
-      rutasFiestas(api, db, verificacion.buscarEntradas, despacharEmails, enviador !== null);
+      rutasFiestas(api, db, verificacion.buscarEntradas, despacharEmails, async () => (enviador ? enviador.disponible() : false));
+
+      // --- Gmail: conectar la casilla y estado ---
+      api.get("/email/estado", async (peticion) => {
+        requiereDueno(peticion);
+        return {
+          configurado: configGoogle !== null,
+          conectado: await gmailConectado(db, configGoogle),
+          casilla: config.EMAIL_USUARIO,
+          direccionDeVuelta: direccionDeVuelta(config.URL_PUBLICA),
+        };
+      });
+
+      api.post("/email/google/conectar", async (peticion) => {
+        const dueno = requiereDueno(peticion);
+        if (!configGoogle) throw new ErrorHttp(409, "EMAIL_SIN_CONFIGURAR", "Falta cargar GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET en Render.");
+        return { url: await linkParaConectar(db, configGoogle, dueno.id) };
+      });
+
+      /** Vuelta desde Google. No usa la sesión (la cookie no viaja en una vuelta desde otro sitio): la valida el "estado". */
+      api.get("/email/google/vuelta", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (peticion, respuesta) => {
+        const q = z.object({ code: z.string().max(2000).optional(), state: z.string().max(200).optional(), error: z.string().max(200).optional() }).parse(peticion.query);
+        if (!configGoogle || q.error || !q.code || !q.state) {
+          return respuesta.redirect(`/ajustes?gmail=error&motivo=${encodeURIComponent(q.error === "access_denied" ? "No diste el permiso." : "No se pudo conectar.")}`);
+        }
+        try {
+          const { adminId } = await completarConexion(db, configGoogle, q.code, q.state);
+          await registrarAuditoria(db, { tipo: "ADMIN", adminId }, { accion: "GMAIL_CONECTADO", entidad: "parametro", entidadId: "gmail" });
+          void despacharEmails();
+          return respuesta.redirect("/ajustes?gmail=ok");
+        } catch (error) {
+          const motivo = error instanceof ErrorGmail ? error.message : "No se pudo conectar.";
+          return respuesta.redirect(`/ajustes?gmail=error&motivo=${encodeURIComponent(motivo)}`);
+        }
+      });
 
       /** El dueño se manda un email de prueba para ver si Gmail quedó bien configurado. */
       api.post("/email/prueba", { config: { rateLimit: { max: 3, timeWindow: "1 minute" } } }, async (peticion) => {
         const dueno = requiereDueno(peticion);
-        if (!enviador) {
-          throw new ErrorHttp(409, "EMAIL_SIN_CONFIGURAR", "Falta cargar EMAIL_USUARIO y EMAIL_CLAVE_APP en Render.");
+        if (!enviador || !(await enviador.disponible())) {
+          throw new ErrorHttp(409, "EMAIL_SIN_CONFIGURAR", "Gmail todavía no está conectado: tocá «Conectar Gmail».");
         }
         try {
-          await enviador({
+          await enviador.enviar({
             para: dueno.email,
             asunto: "Prueba de email – 3T",
             html: "<p>¡Funciona! Los emails con las entradas van a salir desde esta casilla.</p>",
@@ -336,7 +375,7 @@ export async function construirApp(opciones: {
           });
         } catch (error) {
           const detalle = error instanceof Error ? error.message.slice(0, 200) : "error desconocido";
-          throw new ErrorHttp(502, "EMAIL_FALLO", `Gmail no aceptó el envío. Revisá la contraseña de aplicación. (${detalle})`);
+          throw new ErrorHttp(502, "EMAIL_FALLO", `Gmail no aceptó el envío. (${detalle})`);
         }
         return { enviadoA: dueno.email };
       });

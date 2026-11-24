@@ -17,9 +17,12 @@ let dueno: ActorAdmin;
 let link = "";
 let enviados: EmailParaEnviar[] = [];
 let falla = false;
-const enviador: Enviador = async (email) => {
-  if (falla) throw new Error("Gmail no responde");
-  enviados.push(email);
+const enviador: Enviador = {
+  disponible: async () => true,
+  enviar: async (email) => {
+    if (falla) throw new Error("Gmail no responde");
+    enviados.push(email);
+  },
 };
 const URL = "https://3t.ejemplo.com";
 let n = 9000;
@@ -103,7 +106,14 @@ describe("email con las entradas", () => {
     expect(await reenviarEntradas(conexion.db, compra?.id ?? "")).toBe("NO_PAGADA");
   });
 
-  it("sin la clave de Gmail cargada, los emails quedan pendientes", async () => {
+  it("sin Gmail conectado, los emails esperan sin gastar intentos", async () => {
     expect(await enviarPendientes(conexion.db, null, URL)).toEqual({ enviadas: 0, fallidas: 0 });
+    await crearCompra(conexion.db, link, { entradas: [{ nombre: "Eva Luna", dni: "44555666" }], email: "eva@ejemplo.com" });
+    await pagar("44555666", 10000);
+    const sinConectar: Enviador = { disponible: async () => false, enviar: async () => { throw new Error("no debería mandar"); } };
+    expect(await enviarPendientes(conexion.db, sinConectar, URL)).toEqual({ enviadas: 0, fallidas: 0 });
+    const [n] = await conexion.db.select().from(notificaciones).where(eq(notificaciones.destinatario, "eva@ejemplo.com"));
+    expect(n).toMatchObject({ estado: "PENDIENTE", intentos: 0 });
+    expect(await despachar()).toEqual({ enviadas: 1, fallidas: 0 });
   });
 });

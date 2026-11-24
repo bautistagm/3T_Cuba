@@ -31,7 +31,7 @@ export function rutasFiestas(
   db: BaseDeDatos,
   buscar: BuscarEntradas | null,
   despacharEmails: () => Promise<unknown>,
-  emailConfigurado: boolean,
+  emailListo: () => Promise<boolean>,
 ) {
   // --- Administración -------------------------------------------------------
   api.get("/fiestas", async (peticion) => {
@@ -49,7 +49,7 @@ export function rutasFiestas(
     const emails = await estadoEmailsDeCompras(db, [...new Set(detalle.entradas.map((e) => e.compraId))]);
     return {
       ...detalle,
-      emailConfigurado,
+      emailConfigurado: await emailListo(),
       emails: Object.fromEntries(emails),
     };
   });

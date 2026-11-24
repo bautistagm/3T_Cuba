@@ -5,7 +5,6 @@
  * Después `enviarPendientes` las manda desde plantelcuba@gmail.com (SMTP de Gmail, gratis, con una
  * contraseña de aplicación). Si falla, reintenta más tarde (hasta 6 veces, cada vez esperando más).
  */
-import nodemailer from "nodemailer";
 import QRCode from "qrcode";
 import { and, asc, eq, inArray, lte } from "drizzle-orm";
 import { formatearDni, formatearPesos } from "@3t/shared";
@@ -19,21 +18,11 @@ export interface EmailParaEnviar {
   texto: string;
   adjuntos: { nombre: string; contenido: Buffer; cid: string }[];
 }
-export type Enviador = (email: EmailParaEnviar) => Promise<void>;
-
-/** Enviador real por Gmail. */
-export function crearEnviadorGmail(usuario: string, claveApp: string): Enviador {
-  const transporte = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    auth: { user: usuario, pass: claveApp },
-    connectionTimeout: 15_000,
-    socketTimeout: 30_000,
-  });
-  return async (email) => {
-    await transporte.sendMail(mensajeDeCorreo(email, usuario));
-  };
+/** Quien manda los emails (la API de Gmail, o uno de mentira en los tests). */
+export interface Enviador {
+  /** Si está listo para mandar (por ejemplo, si Gmail ya se conectó). Si no, los emails esperan. */
+  disponible: () => Promise<boolean>;
+  enviar: (email: EmailParaEnviar) => Promise<void>;
 }
 
 /** El mensaje tal como lo recibe la librería de envío (separado para poder probarlo sin mandar nada). */
@@ -121,7 +110,10 @@ let enviando: Promise<{ enviadas: number; fallidas: number }> | null = null;
 export function enviarPendientes(db: BaseDeDatos, enviador: Enviador | null, urlPublica: string, ahora = new Date()) {
   if (!enviador) return Promise.resolve({ enviadas: 0, fallidas: 0 });
   if (enviando) return enviando;
-  enviando = enviarPendientesSinRepetir(db, enviador, urlPublica, ahora).finally(() => {
+  enviando = (async () => {
+    if (!(await enviador.disponible())) return { enviadas: 0, fallidas: 0 };
+    return enviarPendientesSinRepetir(db, enviador, urlPublica, ahora);
+  })().finally(() => {
     enviando = null;
   });
   return enviando;
@@ -145,7 +137,7 @@ async function enviarPendientesSinRepetir(db: BaseDeDatos, enviador: Enviador, u
         await db.update(notificaciones).set({ estado: "FALLIDA", ultimoError: "La compra ya no está pagada." }).where(eq(notificaciones.id, n.id));
         continue;
       }
-      await enviador({ ...email, para: n.destinatario });
+      await enviador.enviar({ ...email, para: n.destinatario });
       await db.update(notificaciones).set({ estado: "ENVIADA", enviadaEn: new Date(), intentos: n.intentos + 1, ultimoError: null }).where(eq(notificaciones.id, n.id));
       enviadas++;
     } catch (error) {

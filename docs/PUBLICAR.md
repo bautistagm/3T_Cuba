@@ -59,18 +59,40 @@ La app reconoce sola las cuotas por el DNI de quien transfiere. Para que lea la 
 
 ## 7. Emails de las entradas (desde plantelcuba@gmail.com, gratis)
 
-Google no deja usar la contraseña normal de la cuenta: hay que crear una **contraseña de aplicación** (16 letras), que sirve solo para mandar emails y se puede borrar cuando quieras.
+Render, en el plan gratis, bloquea la forma clásica de mandar emails. Por eso la app los manda por la **API de Gmail**: gratis, unos 500 por día. Se hace una sola vez y lleva unos 15 minutos. En todo el paso, usá **plantelcuba@gmail.com**.
 
-1. Entrá a **https://myaccount.google.com** con **plantelcuba@gmail.com**.
-2. En **Seguridad**, activá la **Verificación en 2 pasos** (si no estaba). Sin eso, Google no muestra la opción del paso 3.
-3. Entrá a **https://myaccount.google.com/apppasswords**, poné de nombre `3T` y tocá **Crear**. Google muestra 16 letras (en grupos de 4). Copialas.
-4. En Render → **plantel-3t** → **Environment**, agregá dos variables:
-   - `EMAIL_USUARIO` = `plantelcuba@gmail.com`
-   - `EMAIL_CLAVE_APP` = las 16 letras (con o sin espacios, da igual).
-   Guardá con **Save**. No pegues la clave en ningún chat.
-5. En la app: **Ajustes → Emails de las entradas → Mandarme un email de prueba**. Si llega, quedó andando.
+**A. Crear el proyecto en Google Cloud** (no pide tarjeta)
+1. Entrá a **https://console.cloud.google.com** con plantelcuba@gmail.com y aceptá las condiciones si las pide.
+2. Arriba, en el selector de proyectos → **Proyecto nuevo** → nombre `3T` → **Crear**. Dejalo seleccionado.
+3. Entrá a **https://console.cloud.google.com/apis/library/gmail.googleapis.com** y tocá **Habilitar**.
 
-Si algún día se filtra, se borra en la misma página del paso 3 y se crea otra. Los emails que no salieron quedan pendientes y se mandan solos cuando la clave vuelve a andar.
+**B. La pantalla de permiso**
+4. Entrá a **https://console.cloud.google.com/auth/overview** → **Comenzar**.
+   - Nombre de la app: `3T`. Correo de asistencia: plantelcuba@gmail.com.
+   - Público: **Externo**.
+   - Correo de contacto: plantelcuba@gmail.com. Aceptá y tocá **Crear**.
+5. En **Acceso a los datos** → **Agregar o quitar permisos**, buscá `gmail.send`, tildalo y guardá. Es el único: la app solo puede **mandar**, no leer los emails.
+6. En **Público**, tocá **Publicar app** → **Confirmar**. Así queda "En producción". Si se queda en "Prueba", Google corta la conexión cada 7 días.
+
+**C. La llave para la app**
+7. En **Clientes** → **Crear cliente**:
+   - Tipo: **Aplicación web**. Nombre: `3T`.
+   - En **URI de redireccionamiento autorizados** agregá exactamente:
+     `https://plantel-3t.onrender.com/api/email/google/vuelta`
+   - Tocá **Crear**. Google muestra un **ID de cliente** y un **Secreto del cliente**. No los pegues en ningún chat.
+8. En Render → **plantel-3t** → **Environment**:
+   - `GOOGLE_CLIENT_ID` = el ID de cliente.
+   - `GOOGLE_CLIENT_SECRET` = el secreto.
+   - `EMAIL_USUARIO` = exactamente `plantelcuba@gmail.com`.
+   - Si estaba `EMAIL_CLAVE_APP`, borrala: ya no se usa.
+   - Guardá con **Save** y esperá que se publique (un par de minutos).
+
+**D. Conectar**
+9. En la app: **Ajustes → Emails de las entradas → Conectar Gmail**. Entrá con plantelcuba@gmail.com.
+10. Google va a decir **"Google no verificó esta app"**. Es normal: la app es tuya y no la publicás para el público. Tocá **Configuración avanzada → Ir a 3T (no seguro)** y después **Continuar**.
+11. Vuelve a Ajustes con "Gmail quedó conectado". Tocá **Mandarme un email de prueba**.
+
+Si algún día cambiás la contraseña de plantelcuba@gmail.com, Google puede cortar el permiso. Los emails quedan esperando: volvé a tocar **Volver a conectar** y salen solos. Si se filtra el secreto, en **Clientes** se crea otro y se cambia en Render.
 
 ## Para saber
 

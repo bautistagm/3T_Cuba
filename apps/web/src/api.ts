@@ -430,6 +430,8 @@ export const api = {
     pedir<{ codigoConsulta: string }>("POST", `/publico/venta/${token}/compras`, datos),
   estadoCompra: (codigo: string) => pedir<EstadoCompra>("GET", `/publico/compras/${codigo}`),
   emailDePrueba: () => pedir<{ enviadoA: string }>("POST", "/email/prueba"),
+  estadoEmail: () => pedir<{ configurado: boolean; conectado: boolean; casilla: string; direccionDeVuelta: string }>("GET", "/email/estado"),
+  conectarGmail: () => pedir<{ url: string }>("POST", "/email/google/conectar"),
   probarMercadoPago: () => pedir<PruebaMercadoPago>("GET", "/mercadopago/prueba"),
 
   sabadoActual: () => pedir<DetalleSabado>("GET", "/sabados/actual"),
