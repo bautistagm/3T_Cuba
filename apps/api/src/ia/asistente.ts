@@ -4,6 +4,7 @@
  * únicamente con esos datos.
  */
 import { GoogleGenAI } from "@google/genai";
+import { conModelos, explicarErrorIa } from "./gemini.js";
 
 export type AsistenteIa = (instrucciones: string, datos: unknown, pregunta: string) => Promise<string>;
 
@@ -22,9 +23,8 @@ Los montos en los datos están en centavos: mostralos en pesos con formato argen
 export function crearAsistenteGemini(opciones: { apiKey: string; modelos: readonly string[] }): AsistenteIa {
   const ia = new GoogleGenAI({ apiKey: opciones.apiKey, apiVersion: "v1beta", httpOptions: { timeout: 45_000 } });
   return async (instrucciones, datos, pregunta) => {
-    let ultimoError: unknown;
-    for (const modelo of opciones.modelos) {
-      try {
+    try {
+      return await conModelos(opciones.modelos, async (modelo) => {
         const respuesta = await ia.models.generateContent({
           model: modelo,
           contents: [
@@ -38,14 +38,10 @@ export function crearAsistenteGemini(opciones: { apiKey: string; modelos: readon
         const texto = respuesta.text?.trim();
         if (!texto) throw new ErrorAsistenteIa("La IA no devolvió respuesta.");
         return texto;
-      } catch (error) {
-        ultimoError = error;
-        const estado = (error as { status?: number }).status;
-        if (estado !== undefined && ![404, 429, 500, 503].includes(estado)) break;
-      }
+      });
+    } catch (error) {
+      throw new ErrorAsistenteIa(explicarErrorIa(error));
     }
-    const detalle = ultimoError instanceof Error ? ultimoError.message : "error desconocido";
-    throw new ErrorAsistenteIa(`La IA no está disponible en este momento (${detalle.slice(0, 160)}).`);
   };
 }
 
