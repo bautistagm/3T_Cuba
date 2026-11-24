@@ -295,3 +295,5 @@ input[type="search"] { width: 100%; }
 .segmentado.tres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .subtitulo { margin: 4px 0 0; font-family: var(--titulo); font-size: 14px; }
 .panel .opcion { background: #fff; }
+.fila-admin { flex-wrap: wrap; }
+.fila-admin .datos { flex: 1 1 100%; }

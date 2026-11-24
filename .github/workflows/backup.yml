@@ -1,0 +1,55 @@
+name: Backup nocturno
+
+# Todas las noches (4:17 de Argentina) se copia la base de datos, se cifra con la clave del dueño
+# y se guarda 30 días en GitHub. Gratis. Cómo recuperar una copia: docs/BACKUPS.md.
+on:
+  schedule:
+    - cron: "17 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      BACKUP_CLAVE: ${{ secrets.BACKUP_CLAVE }}
+    steps:
+      - name: Revisar que estén las claves
+        run: |
+          if [ -z "$DATABASE_URL" ] || [ -z "$BACKUP_CLAVE" ]; then
+            echo "::error::Faltan los secretos BACKUP_DATABASE_URL y BACKUP_CLAVE (ver docs/BACKUPS.md)."
+            exit 1
+          fi
+          if [ "${#BACKUP_CLAVE}" -lt 20 ]; then
+            echo "::error::BACKUP_CLAVE tiene que tener al menos 20 caracteres."
+            exit 1
+          fi
+
+      - name: Copiar y cifrar la base
+        run: |
+          set -euo pipefail
+          umask 077
+          nombre="3t-$(date -u +%Y-%m-%d).dump"
+          # pg_dump de la versión 17 sirve para bases 16 y 17. El archivo sin cifrar nunca se guarda.
+          docker run --rm -e DATABASE_URL postgres:17 sh -c 'pg_dump --format=custom --no-owner --no-privileges "$DATABASE_URL"' \
+            | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 3 --symmetric --cipher-algo AES256 \
+                --output "$nombre.gpg" 3<<<"$BACKUP_CLAVE"
+          tamano=$(stat -c %s "$nombre.gpg")
+          if [ "$tamano" -lt 1000 ]; then
+            echo "::error::La copia salió demasiado chica ($tamano bytes). Algo falló."
+            exit 1
+          fi
+          echo "Copia cifrada: $nombre.gpg ($tamano bytes)"
+          echo "ARCHIVO=$nombre.gpg" >> "$GITHUB_ENV"
+
+      - name: Guardar la copia 30 días
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARCHIVO }}
+          path: ${{ env.ARCHIVO }}
+          retention-days: 30
+          if-no-files-found: error

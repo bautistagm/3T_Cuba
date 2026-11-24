@@ -55,7 +55,7 @@ function App() {
           <Route path="/fiestas" element={<SeccionEnConstruccion titulo="Fiestas" cuando="Llega después de Jugadores y Cuotas." />} />
           <Route path="/caja" element={<PantallaCaja />} />
           <Route path="/stock" element={<SeccionEnConstruccion titulo="Stock" cuando="Llega en 2027." />} />
-          <Route path="/ajustes" element={estado.admin.rol === "DUENO" ? <Ajustes /> : <Navigate to="/" replace />} />
+          <Route path="/ajustes" element={<Ajustes />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       );

@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, ne } from "drizzle-orm";
 import type { Ejecutor } from "../db/cliente.js";
 import { admins, sesiones } from "../db/esquema.js";
 
@@ -67,10 +67,13 @@ export async function revocarSesion(ejecutor: Ejecutor, sesionId: string): Promi
     .where(and(eq(sesiones.id, sesionId), isNull(sesiones.revocadaEn)));
 }
 
-/** Cierra todas las sesiones de un admin (por ejemplo, al desactivarlo o cambiarle la contraseña). */
-export async function revocarSesionesDeAdmin(ejecutor: Ejecutor, adminId: string): Promise<void> {
+/**
+ * Cierra todas las sesiones de un admin (por ejemplo, al desactivarlo o cambiarle la contraseña).
+ * `salvo`: una sesión que queda abierta (la de quien cambia su propia contraseña).
+ */
+export async function revocarSesionesDeAdmin(ejecutor: Ejecutor, adminId: string, salvo?: string): Promise<void> {
   await ejecutor
     .update(sesiones)
     .set({ revocadaEn: new Date() })
-    .where(and(eq(sesiones.adminId, adminId), isNull(sesiones.revocadaEn)));
+    .where(and(eq(sesiones.adminId, adminId), isNull(sesiones.revocadaEn), ...(salvo ? [ne(sesiones.id, salvo)] : [])));
 }

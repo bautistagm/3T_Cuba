@@ -227,8 +227,11 @@ Cada etapa termina con: tests pasando, revisión del dueño y prueba en un entor
 
 ## 7. Pendientes para decidir más adelante
 
-- Monto de cada cuota, precio de invitados, alias de la cuenta (antes de usar plata real).
-- Contraseña de aplicación de Google para enviar desde plantelcuba@gmail.com (Etapa 7).
+- Monto de cada cuota, precio de invitados, alias de la cuenta (antes de usar plata real; se cargan desde la app).
+- Contraseña de aplicación de Google para enviar desde plantelcuba@gmail.com (Etapa 9, Fiestas).
 - Consulta con un contador sobre Ingresos Brutos de la cuenta personal (antes de usar plata real).
-- Cambio de contraseña propio y "blanquear" la contraseña de un administrador (antes de usar la app con plata real).
-- Aviso cada 14 minutos para que la app no se duerma, y backups nocturnos (antes de usar la app con plata real).
+- ✅ Cambio de contraseña propio (todos, en Ajustes) y contraseña nueva para un administrador (el dueño). Al cambiarla se cierran las otras sesiones.
+- ✅ Backups nocturnos cifrados con GitHub Actions, restauración probada (ver `docs/BACKUPS.md`). Falta que el dueño cargue los dos secretos en GitHub.
+- ✅ Aviso para que la app no se duerma: lo hace cron-job.org cada 10 minutos al leer la cuenta (ver `docs/PUBLICAR.md`, paso 6). Falta que el dueño lo configure.
+- **Repositorio privado** (recomendado): hoy es público. El código no tiene secretos, pero conviene privado. Hacerlo y verificar que Render siga publicando.
+- **Arrancar con la base limpia** (antes de usar plata real): la plata nunca se borra, así que los datos de prueba no se eliminan. En su lugar se crea una **base nueva vacía** en Neon, se cambia `DATABASE_URL` en Render (y en el secreto de backups) y el dueño vuelve a crear su usuario. La base de prueba queda guardada aparte.
