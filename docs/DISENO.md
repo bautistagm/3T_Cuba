@@ -40,7 +40,7 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 - Un jugador puede pagar más de un mes junto (ej.: noviembre y diciembre).
 
 **Verificación automática de transferencias por DNI** (decisión del dueño, 24/11/2026)
-- **Nadie sube comprobantes ni carga nada a mano.** La app mira sola las transferencias que entran a la cuenta de Mercado Pago (modo solo lectura, sin costo), **cada 15 minutos y cada vez que se abre la app**.
+- **Nadie sube comprobantes ni carga nada a mano.** La app mira sola las transferencias que entran a la cuenta de Mercado Pago (modo solo lectura, sin costo), **cada 10 minutos y cada vez que se abre la app**.
 - Mercado Pago informa el **CUIT/CUIL de quien transfirió** (no su nombre). El CUIL es el DNI con dos números adelante y uno atrás (20-**30123456**-7): la app toma los **8 números del medio** y los compara con el **DNI** de los jugadores (y de los compradores de entradas). Lo hace la app con una comparación exacta, no la IA: no depende de que la IA esté disponible ni puede "leer mal".
 - Se le pide el **DNI** a cada jugador en el Formulario de Google (no el CUIL). No se busca nada en internet.
 - **Se confirma solo** si: el DNI de la transferencia es el de **un único** jugador (o comprador), el **monto coincide al centavo** con lo que debe y la transferencia **no se usó antes**. Una transferencia confirma como máximo un pago.
@@ -54,7 +54,14 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
   - Pagar cosas personales con la **tarjeta de crédito** cargada en Mercado Pago no afecta: no usa el saldo y la app solo mira lo que entra. No usar el **saldo**, "Cuotas sin tarjeta" ni préstamos de Mercado Pago (se descuentan del saldo).
   - Como todo el saldo es del plantel, la **reserva** deja de hacer falta: el control de caja compara contra el saldo de la cuenta.
 - Lo que ya quedó hecho en la etapa 6 sigue sirviendo: la conexión de solo consulta con Mercado Pago y las protecciones de la base (una transferencia no se usa dos veces, no se borra). El motor de comprobantes con IA (6.2) queda como **respaldo**, sin usarse por defecto.
-- Para que el chequeo cada 15 minutos funcione con la app dormida (plan gratis de Render), un servicio gratis externo (cron-job.org o similar) la "despierta" cada 15 minutos. Lo mismo la mantiene despierta para quien la usa.
+- Para que la lectura funcione con la app dormida (plan gratis de Render), un servicio gratis externo (**cron-job.org**) la llama **cada 10 minutos** con una clave secreta (`CLAVE_LECTURA`, en un encabezado, nunca en la dirección). Lo mismo la mantiene despierta. Además se lee al abrir la app (si no se leyó en los últimos 2 minutos). Ver `docs/PUBLICAR.md`, paso 6.
+- **"¿De quién es esta transferencia?"** (pestaña Revisar en Pagos; las resuelve **solo el dueño**, los admins las ven):
+  - **Es de un jugador:** el dueño lo busca y elige qué cuotas paga; tienen que sumar exactamente lo transferido (no hay pagos parciales).
+  - **Ya está cargada en la app:** un depósito de efectivo o un invitado que pagó por transferencia, que ya se habían registrado. No se suma de nuevo a la caja.
+  - **Otro ingreso del plantel** (por ejemplo, una donación): entra a la caja como "Otros ingresos".
+  - **No es del plantel:** no entra a la caja; el dueño pasa esa plata a su cuenta personal.
+  - Si el dueño anula un pago que vino de una transferencia, la transferencia vuelve a "Revisar".
+- La **fecha de corte** la fija el dueño en Ajustes. Una vez leídas transferencias, no se puede mover hacia atrás.
 
 **Recordatorios** (sin envíos automáticos por ahora)
 - La app arma la **lista de los que faltan pagar** del mes, con su teléfono. Los admins deciden cómo avisarle a cada uno.
@@ -212,7 +219,7 @@ Los jugadores reales se cargan en **febrero de 2027**. Hasta entonces se constru
 | 5 | ✅ Caja y análisis | Libro, saldos, efectivo con responsable, traspasos entre admins, control contra la reserva, gráficos y preguntas a la IA |
 | 6 | ✅ Conexión con Mercado Pago | Conexión de solo consulta, prueba con una transferencia real y protecciones (una transferencia confirma un solo pago). **Decisión del dueño (24/11/2026):** la verificación es automática por DNI, sin comprobantes; se termina junto con jugadores y cuotas, que traen la lista de DNIs. |
 | 7 | ✅ Jugadores | Alta, edición, baja, eliminación e importación desde el Formulario de Google con DNI (se usa en febrero). Los admins dan de alta y corrigen contacto; el DNI, la baja, la eliminación y la importación son del dueño. La auditoría registra qué campos cambiaron, sin guardar datos personales. |
-| 8 | Cuotas y pagos | **8.1 ✅** Meses que abre el dueño, cuota de cada jugador, cobro en efectivo (uno o varios meses), anulaciones, quién debe con botón de WhatsApp y alias del plantel. **8.2:** Períodos, cargos, efectivo, **verificación automática por DNI cada 15 minutos**, bandeja "Revisar" (¿de quién es esta transferencia?), anulaciones y lista de deudores |
+| 8 | ✅ Cuotas y pagos | **8.1** Meses que abre el dueño, cuota de cada jugador, cobro en efectivo (uno o varios meses), anulaciones, quién debe con botón de WhatsApp y alias del plantel. **8.2** Lectura automática de la cuenta cada 10 minutos y al abrir la app, reconocimiento por DNI y "¿De quién es esta transferencia?". Detalle original: **verificación automática por DNI**, bandeja "Revisar" (¿de quién es esta transferencia?), anulaciones y lista de deudores |
 | 9 | Fiestas | Creación, venta por alias con DNI, verificación automática, entradas con QR por email y puerta |
 | 10 | Stock y proveedores | 2027 |
 

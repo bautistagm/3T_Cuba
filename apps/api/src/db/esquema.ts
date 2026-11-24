@@ -691,3 +691,64 @@ export const cargos = pgTable(
     check("cargos_anulado_con_motivo", sql`(${t.estado} <> 'ANULADO') OR (${t.motivoAnulacion} IS NOT NULL AND ${t.anuladoEn} IS NOT NULL)`),
   ],
 );
+
+// ---------------------------------------------------------------------------
+// Transferencias recibidas (etapa 8.2): lo que la app lee sola de la cuenta de Mercado Pago.
+// Se guardan solo las posteriores a la fecha de corte (desde ahí la cuenta es exclusiva del plantel).
+// ---------------------------------------------------------------------------
+
+export const estadoTransferencia = pgEnum("estado_transferencia", [
+  /** La app la reconoció sola: DNI de un jugador y monto exacto de sus cuotas más viejas. */
+  "CONFIRMADA",
+  /** No se pudo reconocer: la resuelve el dueño ("¿De quién es esta transferencia?"). */
+  "REVISAR",
+  /** La resolvió el dueño. */
+  "RESUELTA",
+]);
+
+export const resolucionTransferencia = pgEnum("resolucion_transferencia", [
+  "CUOTA_AUTO",
+  "CUOTA_MANUAL",
+  /** Ya estaba cargada en la app (un depósito de efectivo o un invitado que pagó por transferencia). */
+  "YA_REGISTRADA",
+  /** Otro ingreso del plantel: se carga en la caja. */
+  "OTRO_INGRESO",
+  /** No es plata del plantel (el dueño la tiene que sacar de la cuenta). */
+  "NO_ES_DEL_PLANTEL",
+]);
+
+export const transferenciasRecibidas = pgTable(
+  "transferencias_recibidas",
+  {
+    /** El número de operación de Mercado Pago: una transferencia se usa una sola vez. */
+    mpPagoId: text().primaryKey(),
+    e2eId: text(),
+    montoCentavos: bigint({ mode: "bigint" }).notNull(),
+    fecha: momento().notNull(),
+    cuitPagador: text(),
+    /** Los 8 números del medio del CUIL. */
+    dniPagador: text(),
+    estado: estadoTransferencia().notNull(),
+    resolucion: resolucionTransferencia(),
+    pagoId: uuid()
+      .unique()
+      .references(() => pagos.id),
+    /** Si el DNI es de un jugador pero el monto no cerró. */
+    jugadorSugeridoId: uuid().references(() => jugadores.id),
+    motivoRevision: text(),
+    nota: text(),
+    resueltoPorAdminId: uuid().references(() => admins.id),
+    resueltoEn: momento(),
+    ...tiempos,
+  },
+  (t) => [
+    index("transferencias_estado").on(t.estado, t.fecha),
+    check("transferencias_monto_positivo", sql`${t.montoCentavos} > 0`),
+    check("transferencias_revisar_sin_resolucion", sql`(${t.estado} = 'REVISAR') = (${t.resolucion} IS NULL)`),
+    check(
+      "transferencias_pago_segun_resolucion",
+      sql`(${t.resolucion} IN ('CUOTA_AUTO', 'CUOTA_MANUAL', 'OTRO_INGRESO')) = (${t.pagoId} IS NOT NULL)`,
+    ),
+    check("transferencias_confirmada_es_auto", sql`(${t.estado} = 'CONFIRMADA') = (${t.resolucion} IS NOT DISTINCT FROM 'CUOTA_AUTO')`),
+  ],
+);

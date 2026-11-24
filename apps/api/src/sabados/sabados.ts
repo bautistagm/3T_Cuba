@@ -8,6 +8,7 @@ import { anularAsiento, registrarAsiento, type ActorAdmin } from "../caja/libro.
 import type { BaseDeDatos, Ejecutor } from "../db/cliente.js";
 import { pagos, parametros, sabados } from "../db/esquema.js";
 import { liberarCuotasDelPago } from "../cuotas/cuotas.js";
+import { devolverTransferenciaARevisar } from "../verificacion/transferencias.js";
 import { ErrorNegocio, noExiste, soloDueno } from "../errores.js";
 import { esSabado } from "./fechas.js";
 
@@ -135,6 +136,8 @@ export async function anularPago(db: BaseDeDatos, actor: ActorAdmin, pagoId: str
     const anulacionAsientoId = await anularAsiento(tx, actor, { asientoId: pago.asientoId, motivo });
     // Si era un pago de cuotas, esas cuotas vuelven a estar pendientes.
     if (pago.origen === "CUOTA") await liberarCuotasDelPago(tx, pago.id);
+    // Si venía de una transferencia leída de la cuenta, la transferencia vuelve a "Revisar".
+    await devolverTransferenciaARevisar(tx, pago.id);
     const [despues] = await tx
       .update(pagos)
       .set({

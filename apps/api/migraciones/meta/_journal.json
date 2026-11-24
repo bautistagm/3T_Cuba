@@ -92,6 +92,20 @@
       "when": 1795528933886,
       "tag": "0012_protecciones_cuotas",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795529653055,
+      "tag": "0013_transferencias",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795529654005,
+      "tag": "0014_protecciones_transferencias",
+      "breakpoints": true
     }
   ]
 }

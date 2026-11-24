@@ -1,8 +1,7 @@
-import { useState } from "react";
-import { api, type PruebaComprobante, type PruebaMercadoPago } from "../api";
+import { useEffect, useState, type FormEvent } from "react";
+import { api, type EstadoCuenta, type PruebaMercadoPago } from "../api";
 import { mensajeDe } from "../componentes/comunes";
 import { pesos } from "../plata";
-import { BotonFoto } from "./Cocina";
 
 const formatoFechaHora = new Intl.DateTimeFormat("es-AR", {
   day: "numeric",
@@ -39,6 +38,7 @@ export function PanelMercadoPago() {
         La app solo <strong>consulta</strong> tu cuenta: no puede mandar ni mover plata. Esta prueba muestra lo que te entró en los
         últimos 7 días y no guarda nada.
       </p>
+      <FechaDeCorte />
       <button type="button" className="boton secundario" onClick={() => void probar()} disabled={probando}>
         {probando ? "Consultando…" : "Probar conexión"}
       </button>
@@ -81,58 +81,60 @@ export function PanelMercadoPago() {
           </ul>
         </div>
       )}
-      <PruebaDeComprobante />
     </section>
   );
 }
 
-const POR: Record<string, string> = {
-  NUMERO_OPERACION: "coincide el número de operación",
-  CUIT: "coincide el CUIT/CUIL de quien pagó, la fecha y es la única transferencia así",
-};
-
-/** Sube un comprobante real y muestra qué haría la app. No guarda nada. */
-function PruebaDeComprobante() {
-  const [resultado, setResultado] = useState<PruebaComprobante | null>(null);
+/** Desde qué día la cuenta es solo del plantel: la app lee y reconoce transferencias desde ese día. */
+function FechaDeCorte() {
+  const [estado, setEstado] = useState<EstadoCuenta | null>(null);
+  const [fecha, setFecha] = useState("");
+  const [editando, setEditando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const l = resultado?.lectura;
+  const [ok, setOk] = useState<string | null>(null);
+  useEffect(() => {
+    api.estadoCuenta().then((e) => {
+      setEstado(e);
+      setFecha(e.fechaCorte ?? "");
+    }).catch((e: unknown) => setError(mensajeDe(e)));
+  }, []);
+
+  async function guardar(evento: FormEvent) {
+    evento.preventDefault();
+    setError(null);
+    if (!window.confirm(`Desde el ${fecha.split("-").reverse().join("/")}, toda transferencia que entre a Mercado Pago se toma como del plantel. ¿Confirmás?`)) return;
+    try {
+      await api.fijarFechaCorte(fecha);
+      setEstado(await api.estadoCuenta());
+      setEditando(false);
+      setOk("Fecha de corte guardada. La app ya lee la cuenta sola.");
+    } catch (e) {
+      setError(mensajeDe(e));
+    }
+  }
+
+  if (!estado) return null;
   return (
-    <div className="prueba-comprobante">
-      <h3>Probar con un comprobante</h3>
+    <div className="panel">
       <p className="ayuda">
-        Subí la captura de una transferencia que te hayan hecho. La IA la lee y la app te dice si la habría confirmado sola. No se guarda nada.
+        <strong>Fecha de corte:</strong>{" "}
+        {estado.fechaCorte ? `desde el ${estado.fechaCorte.split("-").reverse().join("/")} la cuenta es solo del plantel.` : "todavía no está. Sin ella la app no lee la cuenta."}
+        {estado.ultimaLectura && ` Última lectura: ${new Date(estado.ultimaLectura).toLocaleString("es-AR", { hourCycle: "h23", timeZone: "America/Argentina/Buenos_Aires" })}.`}
       </p>
-      <BotonFoto
-        texto="Elegir comprobante"
-        textoSubiendo="Leyendo el comprobante… (puede tardar unos segundos)"
-        camara={false}
-        alSubir={async (b64) => {
-          setError(null);
-          setResultado(null);
-          setResultado(await api.probarComprobante(b64));
-        }}
-        alFallar={setError}
-      />
-      {error && <p className="aviso error" role="alert">{error}</p>}
-      {resultado && l && (
-        <>
-          {resultado.resultado === "CONFIRMAR" ? (
-            <p className="aviso ok" role="status">
-              ✓ Se habría confirmado solo: {POR[resultado.por ?? ""] ?? resultado.por} (operación {resultado.mpPagoId}).
-            </p>
-          ) : (
-            <p className="aviso error" role="status">Habría ido a «Revisar»: {resultado.motivo}</p>
-          )}
-          <dl className="lectura-comprobante">
-            <div><dt>Monto</dt><dd>{l.monto_centavos === null ? "—" : pesos(String(l.monto_centavos))}</dd></div>
-            <div><dt>Fecha</dt><dd>{l.fecha_hora?.replace("T", " ") ?? "—"}</dd></div>
-            <div><dt>Quién pagó</dt><dd>{[l.nombre_pagador, l.cuit_pagador].filter(Boolean).join(" · ") || "—"}</dd></div>
-            <div><dt>Desde</dt><dd>{l.banco_origen ?? "—"}</dd></div>
-            <div><dt>N.º de operación</dt><dd>{l.numero_operacion ?? "—"}</dd></div>
-            {l.observaciones && <div><dt>Notas de la IA</dt><dd>{l.observaciones}</dd></div>}
-          </dl>
-        </>
+      {!editando && (
+        <button type="button" className="boton secundario chico" onClick={() => setEditando(true)}>
+          {estado.fechaCorte ? "Cambiar la fecha de corte" : "Fijar la fecha de corte"}
+        </button>
       )}
+      {editando && (
+        <form onSubmit={guardar} className="botonera">
+          <label className="campo">Desde qué día la cuenta es solo del plantel<input type="date" required value={fecha} onChange={(e) => setFecha(e.target.value)} /></label>
+          <button className="boton principal" type="submit">Guardar</button>
+          <button className="boton secundario" type="button" onClick={() => setEditando(false)}>Cancelar</button>
+        </form>
+      )}
+      {ok && <p className="aviso ok" role="status">{ok}</p>}
+      {error && <p className="aviso error" role="alert">{error}</p>}
     </div>
   );
 }
