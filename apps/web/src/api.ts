@@ -270,6 +270,37 @@ export interface VistaImportacion {
   resumen: { nuevos: number; yaEstan: number; conError: number };
 }
 
+export interface MesCuota {
+  id: string;
+  anio: number;
+  mes: number;
+  nombre: string;
+  montoCentavos: string;
+  nota: string | null;
+  pagaron: number;
+  deben: number;
+  cobradoCentavos: string;
+  faltaCentavos: string;
+}
+export interface Deudor {
+  jugadorId: string;
+  nombre: string;
+  apellido: string;
+  telefono: string | null;
+  camada: string | null;
+  cuotas: { cargoId: string; mes: string; montoCentavos: string }[];
+  totalCentavos: string;
+}
+export interface CuotaJugador {
+  id: string;
+  periodoId: string;
+  mes: string;
+  montoCentavos: string;
+  estado: "PENDIENTE" | "PAGADO" | "ANULADO";
+  pagoId: string | null;
+  motivoAnulacion: string | null;
+}
+
 type ItemParaEnviar = { descripcion: string; cantidad?: string; categoria: Categoria; subtotalCentavos: string };
 
 export const api = {
@@ -296,6 +327,18 @@ export const api = {
     pedir<{ borrado: boolean; anonimizado: boolean }>("POST", `/jugadores/${id}/eliminar`, { confirmacion }),
   analizarImportacion: (csv: string) => pedir<VistaImportacion>("POST", "/jugadores/importar/analizar", { csv }),
   importarJugadores: (csv: string) => pedir<{ importados: number }>("POST", "/jugadores/importar", { csv }),
+  mesesCuota: () => pedir<{ meses: MesCuota[]; alias: string | null }>("GET", "/cuotas/meses"),
+  abrirMes: (datos: { anio: number; mes: number; montoCentavos: string; nota?: string }) =>
+    pedir<{ cuotasCargadas: number }>("POST", "/cuotas/meses", datos),
+  cambiarMontoMes: (id: string, montoCentavos: string) => pedir<unknown>("PUT", `/cuotas/meses/${id}/monto`, { montoCentavos }),
+  deudores: (periodoId?: string) =>
+    pedir<{ deudores: Deudor[]; totalCentavos: string; alias: string | null }>("GET", `/cuotas/deudores${periodoId ? `?periodoId=${periodoId}` : ""}`),
+  cuotasJugador: (id: string) =>
+    pedir<{ cuotas: CuotaJugador[]; mesesSinCuota: { periodoId: string; mes: string; montoCentavos: string }[] }>("GET", `/jugadores/${id}/cuotas`),
+  agregarCuota: (jugadorId: string, periodoId: string) => pedir<unknown>("POST", `/jugadores/${jugadorId}/cuotas`, { periodoId }),
+  anularCuota: (id: string, motivo: string) => pedir<unknown>("POST", `/cuotas/${id}/anular`, { motivo }),
+  cobrarEfectivo: (jugadorId: string, cuotas: string[]) => pedir<unknown>("POST", `/jugadores/${jugadorId}/pagos-efectivo`, { cuotas }),
+  fijarAlias: (alias: string) => pedir<unknown>("PUT", "/parametros/alias", { alias }),
   probarMercadoPago: () => pedir<PruebaMercadoPago>("GET", "/mercadopago/prueba"),
   probarComprobante: (imagenBase64: string) => pedir<PruebaComprobante>("POST", "/verificacion/probar", { imagenBase64 }),
 

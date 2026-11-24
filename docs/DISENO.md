@@ -27,15 +27,16 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 - Los jugadores no pagan entrada a las fiestas: la fiesta va incluida en la cuota de ese mes.
 - No hay fecha de vencimiento formal; el objetivo es cobrar en los primeros días del mes.
 - Altas, bajas y lesionados: pagan igual que todos mientras estén activos.
+- **Meses (decisión del dueño, 24/11/2026):** se cobra solo en los meses que **abre el dueño**, fijando el monto. Al abrir un mes, la app le carga la cuota a todos los jugadores activos. Si un mes no se abre, ese mes no se cobra. El monto se puede corregir mientras nadie haya pagado ese mes.
+- **Altas a mitad de mes (decisión del dueño):** lo decide el dueño cada vez. Desde la ficha del jugador puede agregarle la cuota de un mes ya abierto, o no.
+- **Varios meses juntos (decisión del dueño):** si una transferencia es justo la suma de los meses más viejos que debe el jugador, la app los cancela sola, del más viejo al más nuevo. Cualquier otro monto va a "Revisar".
+- El dueño puede **anular la cuota** de un jugador en un mes (por ejemplo, si se sumó tarde), con motivo. Queda registrado.
 
 **Medios de pago** (sin comisiones)
-- **Transferencia al alias** del plantel, con comprobante. No se usan links de pago ni débito automático de Mercado Pago porque cobran comisión.
+- **Transferencia al alias** del plantel, desde la cuenta del jugador. La app la reconoce sola por el DNI (ver "Verificación automática"). No se usan links de pago ni débito automático de Mercado Pago porque cobran comisión.
 - **Efectivo** entregado a un administrador.
-- Quien quiera "débito automático" programa en su propio banco o billetera una transferencia automática el día 1. Es gratis y para la app es una transferencia más.
-- **La cuenta es la de Mercado Pago personal del dueño** (decisión del dueño; opción "A"). La plata del plantel convive con la personal:
-  - La app lee los movimientos que entran a la cuenta (solo lectura) y **solo guarda los que coinciden con un pago del plantel**; el resto se descarta sin almacenarlo.
-  - Para no gastar la plata del plantel sin querer, el dueño la aparta en una **reserva** de Mercado Pago. La app le dice cuánto tendría que haber apartado.
-  - Si más adelante se usa otra cuenta (de un tesorero o del club), es solo cambiar el alias y las credenciales.
+- **Sin débito automático por ahora** (decisión del dueño, 24/11/2026). Si un jugador programa por su cuenta una transferencia mensual desde su banco, para la app es una transferencia más.
+- **La cuenta es la de Mercado Pago del dueño, exclusiva del plantel** desde la fecha de corte (ver "Cuenta exclusiva del plantel"). Si más adelante se usa otra cuenta (de un tesorero o del club), es solo cambiar el alias y la clave en Render.
 - Un jugador puede pagar más de un mes junto (ej.: noviembre y diciembre).
 
 **Verificación automática de transferencias por DNI** (decisión del dueño, 24/11/2026)
@@ -45,7 +46,7 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 - **Se confirma solo** si: el DNI de la transferencia es el de **un único** jugador (o comprador), el **monto coincide al centavo** con lo que debe y la transferencia **no se usó antes**. Una transferencia confirma como máximo un pago.
 - **Va a "Revisar" (lo resuelve el dueño):**
   - Si el DNI no coincide con nadie (por ejemplo, pagó desde la cuenta del papá o de la novia): la app **pregunta de quién es** esa transferencia. Siempre se revisa a mano; la app no "aprende" CUILs de otras personas.
-  - Si coincide el DNI pero el **monto es distinto** (dos meses juntos, la cuota de un amigo): a "Revisar", el dueño decide a qué corresponde. *(Supuesto de Claude, el dueño no lo contestó; se puede cambiar.)*
+  - Si coincide el DNI pero el **monto es distinto** de lo que debe (salvo la suma exacta de sus meses más viejos, que se cancela sola): a "Revisar", el dueño decide a qué corresponde.
   - Si entra una transferencia que no coincide con nadie, siempre va a "Revisar" para que el dueño diga de quién es (o que no es del plantel). Esto se puede porque la cuenta es **exclusiva del plantel** (ver abajo).
   - Si la transferencia viene del **DNI del dueño** (por ejemplo, cuando deposita efectivo del plantel desde su otra cuenta), la app la propone como **depósito de efectivo** de su caja, no como pago de un jugador.
 - La app solo guarda las transferencias que confirmaron un pago o que están en "Revisar".
@@ -106,7 +107,7 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
 
 1. **Montos en centavos, como enteros** (`BIGINT`). Nunca decimales ni floats.
 2. **La plata nunca se borra.** Pagos, gastos y entradas se **anulan** con motivo, autor y fecha. **Solo el dueño anula.**
-   - **Jugadores**: el dueño puede **dar de baja** (deja de generar cuotas y sale de las listas, pero se puede reactivar) o **eliminar**. Si el jugador nunca pagó nada, se borra por completo. Si tiene pagos, se borran sus datos personales (nombre, DNI, teléfono, email) y sus pagos quedan como "Jugador eliminado", para que la caja siga cerrando. Eliminar pide escribir el nombre del jugador para confirmar y queda en la auditoría.
+   - **Jugadores**: el dueño puede **dar de baja** (deja de generar cuotas y sale de las listas, pero se puede reactivar) o **eliminar**. Si el jugador no tiene ninguna cuota ni pago, se borra por completo. Si tiene cuotas o pagos, sus cuotas pendientes se anulan ("Jugador eliminado") y se borran sus datos personales (nombre, DNI, teléfono, email) y sus pagos quedan como "Jugador eliminado", para que la caja siga cerrando. Eliminar pide escribir el nombre del jugador para confirmar y queda en la auditoría.
 3. **Libro de caja de doble partida**: cada evento de plata es un asiento con dos o más movimientos que suman exactamente cero (de dónde sale y adónde va). El saldo se calcula sumando movimientos; nunca se guarda un saldo "a mano". La base de datos rechaza asientos desbalanceados, cambios y borrados, y solo acepta anulaciones que sean el espejo exacto del asiento original.
 4. **Auditoría**: cada cambio de datos guarda quién, cuándo, qué había antes y qué hay después.
 5. **Mercado Pago solo en lectura**: la app lee los movimientos de la cuenta pero no puede mover plata. Cada movimiento se usa para confirmar un único pago.
@@ -211,7 +212,7 @@ Los jugadores reales se cargan en **febrero de 2027**. Hasta entonces se constru
 | 5 | ✅ Caja y análisis | Libro, saldos, efectivo con responsable, traspasos entre admins, control contra la reserva, gráficos y preguntas a la IA |
 | 6 | ✅ Conexión con Mercado Pago | Conexión de solo consulta, prueba con una transferencia real y protecciones (una transferencia confirma un solo pago). **Decisión del dueño (24/11/2026):** la verificación es automática por DNI, sin comprobantes; se termina junto con jugadores y cuotas, que traen la lista de DNIs. |
 | 7 | ✅ Jugadores | Alta, edición, baja, eliminación e importación desde el Formulario de Google con DNI (se usa en febrero). Los admins dan de alta y corrigen contacto; el DNI, la baja, la eliminación y la importación son del dueño. La auditoría registra qué campos cambiaron, sin guardar datos personales. |
-| 8 | Cuotas y pagos | Períodos, cargos, efectivo, **verificación automática por DNI cada 15 minutos**, bandeja "Revisar" (¿de quién es esta transferencia?), anulaciones y lista de deudores |
+| 8 | Cuotas y pagos | **8.1 ✅** Meses que abre el dueño, cuota de cada jugador, cobro en efectivo (uno o varios meses), anulaciones, quién debe con botón de WhatsApp y alias del plantel. **8.2:** Períodos, cargos, efectivo, **verificación automática por DNI cada 15 minutos**, bandeja "Revisar" (¿de quién es esta transferencia?), anulaciones y lista de deudores |
 | 9 | Fiestas | Creación, venta por alias con DNI, verificación automática, entradas con QR por email y puerta |
 | 10 | Stock y proveedores | 2027 |
 

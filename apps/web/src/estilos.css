@@ -268,7 +268,7 @@ fieldset.opciones { border: none; padding: 0; margin: 0; display: flex; flex-dir
 .lectura-comprobante dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
 
 /* Jugadores */
-.lista-jugadores li { display: block; padding: 0; }
+.lista-jugadores > li { display: block; padding: 0; }
 .fila-jugador { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; background: none; border: none; text-align: left; font: inherit; color: inherit; cursor: pointer; }
 .fila-jugador .flecha { color: var(--texto-2); font-size: 14px; }
 .detalle-jugador { margin-bottom: 12px; }
@@ -278,3 +278,15 @@ fieldset.opciones { border: none; padding: 0; margin: 0; display: flex; flex-dir
 .detalle-jugador dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
 input[type="search"] { width: 100%; }
 .lista-importacion li { align-items: flex-start; }
+
+/* Cuotas */
+.lista-meses > li { display: block; padding: 0; }
+.fila-jugador .datos { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fila-jugador .datos strong { font-size: 15px; }
+.fila-jugador .datos span { font-size: 13px; color: var(--texto-2); }
+.cuotas-jugador .opcion { border: none; padding: 0; font-size: 14px; }
+.ayuda .enlace { padding: 0; min-height: 0; font-size: inherit; }
+.cuotas-jugador { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--linea); padding-top: 10px; }
+.cuotas-jugador h3 { margin: 0; font-family: var(--titulo); font-size: 15px; }
+.cuotas-jugador .lista li { padding: 8px 0; font-size: 14px; }
+.acciones-cuota { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
