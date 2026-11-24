@@ -18,17 +18,14 @@ const esquemaConfig = z.object({
    * Va en el encabezado "x-clave-lectura". Sin ella, la cuenta solo se lee cuando alguien abre la app.
    */
   CLAVE_LECTURA: z.string().min(24).optional(),
-  /** Casilla desde la que salen los emails con las entradas (plantelcuba@gmail.com). */
-  EMAIL_USUARIO: z.string().email().optional(),
+  /** Casilla desde la que salen los emails con las entradas. */
+  EMAIL_USUARIO: z.string().email().default("plantelcuba@gmail.com"),
   /**
-   * Contraseña de aplicación de Google de esa casilla (16 letras). NO es la contraseña de la cuenta.
-   * Sin ella, los emails quedan pendientes hasta que se cargue.
+   * Credenciales de la app en Google Cloud (gratis) para mandar emails por la API de Gmail.
+   * Render bloquea el SMTP en el plan gratis, por eso no se usa la contraseña de aplicación. Ver docs/PUBLICAR.md, paso 7.
    */
-  EMAIL_CLAVE_APP: z
-    .string()
-    .transform((t) => t.replace(/\s+/g, ""))
-    .pipe(z.string().min(16))
-    .optional(),
+  GOOGLE_CLIENT_ID: z.string().min(10).optional(),
+  GOOGLE_CLIENT_SECRET: z.string().min(10).optional(),
   /** Dirección pública de la app, para los links de los emails. */
   URL_PUBLICA: z.string().url().default("https://plantel-3t.onrender.com"),
   /** Clave gratis de Google AI Studio para leer tickets. Sin ella, los tickets quedan para cargar a mano. */

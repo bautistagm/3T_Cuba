@@ -32,5 +32,7 @@ services:
         sync: false
       - key: EMAIL_USUARIO
         value: plantelcuba@gmail.com
-      - key: EMAIL_CLAVE_APP
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
         sync: false

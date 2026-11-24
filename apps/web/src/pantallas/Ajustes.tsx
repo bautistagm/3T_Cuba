@@ -253,24 +253,63 @@ function MiContrasena() {
 }
 
 /** Prueba de los emails de las entradas (dueño). */
+/** Emails de las entradas: conectar plantelcuba@gmail.com (API de Gmail) y mandar uno de prueba. */
 function EmailDePrueba() {
-  const [estado, setEstado] = useState<{ tipo: "ok" | "error"; texto: string } | null>(null);
+  const [cuenta, setCuenta] = useState<{ configurado: boolean; conectado: boolean; casilla: string; direccionDeVuelta: string } | null>(null);
+  const [estado, setEstado] = useState<{ tipo: "ok" | "error"; texto: string } | null>(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("gmail") === "ok") return { tipo: "ok", texto: "Gmail quedó conectado. Ya salen los emails de las entradas." };
+    if (q.get("gmail") === "error") return { tipo: "error", texto: q.get("motivo") ?? "No se pudo conectar Gmail." };
+    return null;
+  });
   const [mandando, setMandando] = useState(false);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has("gmail")) window.history.replaceState(null, "", "/ajustes");
+    api.estadoEmail().then(setCuenta).catch(() => setCuenta(null));
+  }, []);
+
+  const conectar = () => {
+    setMandando(true);
+    api.conectarGmail()
+      .then((r) => { window.location.href = r.url; })
+      .catch((e: unknown) => {
+        setEstado({ tipo: "error", texto: e instanceof ErrorApi ? e.message : "No se pudo conectar." });
+        setMandando(false);
+      });
+  };
+
   return (
     <section className="tarjeta" aria-labelledby="titulo-email">
       <h2 id="titulo-email">Emails de las entradas</h2>
-      <p className="ayuda">Salen desde plantelcuba@gmail.com. Mandate uno de prueba para ver si está bien configurado.</p>
-      <button type="button" className="boton secundario" disabled={mandando}
-        onClick={() => {
-          setMandando(true);
-          setEstado(null);
-          api.emailDePrueba()
-            .then((r) => setEstado({ tipo: "ok", texto: `Listo: te mandamos un email a ${r.enviadoA}. Fijate en spam si no lo ves.` }))
-            .catch((e: unknown) => setEstado({ tipo: "error", texto: e instanceof ErrorApi ? e.message : "No se pudo mandar." }))
-            .finally(() => setMandando(false));
-        }}>
-        {mandando ? "Mandando…" : "Mandarme un email de prueba"}
-      </button>
+      {cuenta && !cuenta.configurado && (
+        <p className="ayuda">Falta cargar en Render las claves de Google (GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET). Seguí el paso 7 de la guía.</p>
+      )}
+      {cuenta?.configurado && !cuenta.conectado && (
+        <>
+          <p className="ayuda">Los emails salen desde <strong>{cuenta.casilla}</strong>. Conectala una sola vez: entrás con esa cuenta y le das permiso a la app <em>solo para enviar</em> emails.</p>
+          <button type="button" className="boton principal" disabled={mandando} onClick={conectar}>
+            {mandando ? "Abriendo Google…" : "Conectar Gmail"}
+          </button>
+        </>
+      )}
+      {cuenta?.conectado && (
+        <>
+          <p className="ayuda">✅ Gmail conectado: los emails salen desde <strong>{cuenta.casilla}</strong>.</p>
+          <button type="button" className="boton secundario" disabled={mandando}
+            onClick={() => {
+              setMandando(true);
+              setEstado(null);
+              api.emailDePrueba()
+                .then((r) => setEstado({ tipo: "ok", texto: `Listo: te mandamos un email a ${r.enviadoA}. Fijate en spam si no lo ves.` }))
+                .catch((e: unknown) => setEstado({ tipo: "error", texto: e instanceof ErrorApi ? e.message : "No se pudo mandar." }))
+                .finally(() => setMandando(false));
+            }}>
+            {mandando ? "Mandando…" : "Mandarme un email de prueba"}
+          </button>
+          <button type="button" className="boton secundario" disabled={mandando} onClick={conectar}>Volver a conectar</button>
+        </>
+      )}
       {estado && <p className={`aviso ${estado.tipo}`} role="status">{estado.texto}</p>}
     </section>
   );

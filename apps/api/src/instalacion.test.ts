@@ -66,7 +66,7 @@ describe("instalación del dueño desde la web", () => {
   });
 
   it("si el servidor no tiene código de instalación, no se puede instalar", async () => {
-    const otra = await construirApp({ db: conexion.db, config: { NODE_ENV: "test", PUERTO: 0, DATABASE_URL: "postgresql://x/test", SESION_DIAS: 30, GEMINI_MODELOS: [], URL_PUBLICA: "https://3t.ejemplo.com" } });
+    const otra = await construirApp({ db: conexion.db, config: { NODE_ENV: "test", PUERTO: 0, DATABASE_URL: "postgresql://x/test", SESION_DIAS: 30, GEMINI_MODELOS: [], URL_PUBLICA: "https://3t.ejemplo.com", EMAIL_USUARIO: "plantelcuba@gmail.com" } });
     const r = await otra.inject({ method: "POST", url: "/api/instalacion", payload: { ...DATOS, codigo: "lo-que-sea-123" } });
     expect(r.statusCode).toBe(403);
     expect(r.json().error.codigo).toBe("INSTALACION_DESHABILITADA");
