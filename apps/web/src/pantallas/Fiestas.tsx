@@ -185,7 +185,7 @@ export function PantallaFiesta() {
           </div>
           {d.fiesta.estado === "VENTA_CERRADA" && <p className="aviso error">La venta está cerrada.</p>}
           {esDueno && !d.emailConfigurado && (
-            <p className="aviso error">Los emails con las entradas todavía no salen: falta cargar la contraseña de aplicación de plantelcuba@gmail.com en Render. Mientras tanto, cada comprador ve sus QR en su página.</p>
+            <p className="aviso error">Los emails con las entradas todavía no salen: falta conectar Gmail en Ajustes. Mientras tanto, cada comprador ve sus QR en su página.</p>
           )}
           {esDueno && (
             <button type="button" className="boton secundario chico"
@@ -213,6 +213,29 @@ export function PantallaFiesta() {
             );
           })}
         </section>
+
+        {esDueno && d.fiesta.tokenPuerta && (() => {
+          const link = `${window.location.origin}/puerta/${d.fiesta.tokenPuerta}`;
+          const mensaje = `Link de la puerta de ${d.fiesta.nombre}. Abrilo en el celular para escanear los QR (no lo compartas fuera del plantel): ${link}`;
+          return (
+            <section className="tarjeta">
+              <h2>Puerta</h2>
+              <p className="ayuda">Mandale este link a los que controlan la entrada. Lo abren en el celular, ponen su nombre y escanean los QR con la cámara. Anda aunque se corte la señal.</p>
+              <div className="fila">
+                <span className="datos"><strong>Link de la puerta</strong><span className="link-corto">{link}</span></span>
+                <span className="acciones-cuota">
+                  <button type="button" className="boton secundario chico" onClick={() => copiar(link, "puerta")}>{copiado === "puerta" ? "¡Copiado!" : "Copiar"}</button>
+                  <a className="boton secundario chico" href={`https://wa.me/?text=${encodeURIComponent(mensaje)}`} target="_blank" rel="noreferrer">WhatsApp</a>
+                </span>
+              </div>
+              <button type="button" className="enlace"
+                onClick={() => window.confirm("¿Cambiar el link de la puerta? El link viejo deja de andar y hay que mandar el nuevo.") &&
+                  void hacer(() => api.nuevoLinkPuerta(d.fiesta.id), "Link de la puerta cambiado. Mandá el nuevo.")}>
+                Cambiar el link (si se filtró)
+              </button>
+            </section>
+          );
+        })()}
 
         <section className="tarjeta">
           <div className="fila-titulo">

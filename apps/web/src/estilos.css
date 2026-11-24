@@ -308,3 +308,32 @@ input[type="search"] { width: 100%; }
 .qr { width: 240px; max-width: 80vw; margin: 8px auto; background: #fff; padding: 8px; border-radius: 12px; }
 .qr svg { display: block; width: 100%; height: auto; }
 .texto-error { color: var(--rojo, #b42318); }
+
+/* --- Puerta de la fiesta --- */
+.puerta { min-height: 100vh; background: var(--negro); color: #fff; padding: 12px 12px 24px; display: flex; flex-direction: column; gap: 12px; }
+.puerta .tarjeta { color: var(--texto); }
+.puerta-cabecera { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.puerta-cabecera > div { display: flex; flex-direction: column; gap: 2px; }
+.puerta-cabecera strong { font-family: var(--titulo); font-size: 20px; }
+.puerta-cabecera span { color: var(--texto-claro); font-size: 14px; }
+.enlace.claro { color: var(--texto-claro); }
+.senal { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 99px; white-space: nowrap; }
+.senal.si { background: #1f3d2b; color: #b8ecc8; }
+.senal.no { background: #4a2a12; color: #ffd8a8; }
+.puerta .segmentado { background: var(--negro-2); }
+.puerta .segmentado button { color: var(--texto-claro); }
+.puerta .segmentado button.activo { color: var(--texto); }
+.camara { position: relative; border-radius: var(--radio); overflow: hidden; background: #000; min-height: 300px; display: flex; flex-direction: column; justify-content: flex-end; }
+.camara video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.camara .mira { position: absolute; left: 50%; top: 45%; width: 62%; aspect-ratio: 1; transform: translate(-50%, -50%); border: 3px solid rgba(255, 255, 255, 0.85); border-radius: 18px; box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.35); }
+.camara .ayuda.claro { position: relative; color: #fff; text-align: center; margin: 12px; }
+.camara .aviso { margin: 12px; }
+.camara { aspect-ratio: 3 / 4; max-height: 70vh; }
+.pantallazo { position: fixed; inset: 0; z-index: 50; border: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; color: #fff; font: inherit; cursor: pointer; }
+.pantallazo.verde { background: #137a3a; }
+.pantallazo.rojo { background: var(--rojo); }
+.pantallazo-icono { font-size: 96px; line-height: 1; font-weight: 900; }
+.pantallazo-titulo { font-family: var(--titulo); font-size: 40px; line-height: 1.1; }
+.pantallazo-nombre { font-family: var(--titulo); font-size: 30px; font-weight: 800; }
+.pantallazo-detalle { font-size: 20px; font-weight: 600; }
+.pantallazo-nota { font-size: 16px; opacity: 0.9; max-width: 420px; }

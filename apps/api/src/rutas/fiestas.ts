@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { ingresosSchema, listaDePuerta, registrarIngresos } from "../fiestas/puerta.js";
 import { z } from "zod";
 import type { BaseDeDatos } from "../db/cliente.js";
 import {
@@ -115,6 +116,17 @@ export function rutasFiestas(
   });
 
   /** Quien compró ve el estado. De paso, si hace más de un minuto que no se lee la cuenta, se lee. */
+  // --- Puerta (link secreto, sin usuario) ---
+  api.get("/publico/puerta/:token", { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } }, async (peticion) => {
+    const { token } = z.object({ token: z.string().min(10).max(100) }).parse(peticion.params);
+    return listaDePuerta(db, token);
+  });
+
+  api.post("/publico/puerta/:token/ingresos", { config: { rateLimit: { max: 300, timeWindow: "1 minute" } } }, async (peticion) => {
+    const { token } = z.object({ token: z.string().min(10).max(100) }).parse(peticion.params);
+    return registrarIngresos(db, { tipo: "PUBLICO", ip: peticion.ip }, token, ingresosSchema.parse(peticion.body));
+  });
+
   api.get("/publico/compras/:codigo", { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } }, async (peticion) => {
     const { codigo } = codigoSchema.parse(peticion.params);
     const actual = await estadoDeCompra(db, codigo);
