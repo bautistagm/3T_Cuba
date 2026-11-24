@@ -715,6 +715,10 @@ export const resolucionTransferencia = pgEnum("resolucion_transferencia", [
   "OTRO_INGRESO",
   /** No es plata del plantel (el dueño la tiene que sacar de la cuenta). */
   "NO_ES_DEL_PLANTEL",
+  /** Compra de entradas de una fiesta, reconocida sola (DNI de quien compra y total exacto). */
+  "ENTRADAS_AUTO",
+  /** Compra de entradas asignada por el dueño. */
+  "ENTRADAS_MANUAL",
 ]);
 
 export const transferenciasRecibidas = pgTable(
@@ -747,8 +751,119 @@ export const transferenciasRecibidas = pgTable(
     check("transferencias_revisar_sin_resolucion", sql`(${t.estado} = 'REVISAR') = (${t.resolucion} IS NULL)`),
     check(
       "transferencias_pago_segun_resolucion",
-      sql`(${t.resolucion} IN ('CUOTA_AUTO', 'CUOTA_MANUAL', 'OTRO_INGRESO')) = (${t.pagoId} IS NOT NULL)`,
+      sql`(coalesce(${t.resolucion}::text, '') IN ('CUOTA_AUTO', 'CUOTA_MANUAL', 'OTRO_INGRESO', 'ENTRADAS_AUTO', 'ENTRADAS_MANUAL')) = (${t.pagoId} IS NOT NULL)`,
     ),
-    check("transferencias_confirmada_es_auto", sql`(${t.estado} = 'CONFIRMADA') = (${t.resolucion} IS NOT DISTINCT FROM 'CUOTA_AUTO')`),
+    check("transferencias_confirmada_es_auto", sql`(${t.estado} = 'CONFIRMADA') = (coalesce(${t.resolucion}::text, '') IN ('CUOTA_AUTO', 'ENTRADAS_AUTO'))`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Fiestas (etapa 9): venta de entradas a gente de afuera, sin cupos, con QR.
+// ---------------------------------------------------------------------------
+
+export const estadoFiesta = pgEnum("estado_fiesta", ["A_LA_VENTA", "VENTA_CERRADA"]);
+
+export const fiestas = pgTable("fiestas", {
+  id: uuid().primaryKey().defaultRandom(),
+  nombre: text().notNull(),
+  fechaHora: momento().notNull(),
+  lugar: text(),
+  estado: estadoFiesta().notNull().default("A_LA_VENTA"),
+  /** Link de puerta: cualquiera que lo tenga puede escanear entradas de esta fiesta. Se puede cambiar. */
+  tokenPuerta: text().notNull().unique(),
+  creadaPorAdminId: uuid()
+    .notNull()
+    .references(() => admins.id),
+  ...tiempos,
+});
+
+/** Cada tipo de entrada (por defecto "Mujer" y "Hombre") con su precio y su link de venta. */
+export const tiposEntrada = pgTable(
+  "tipos_entrada",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    fiestaId: uuid()
+      .notNull()
+      .references(() => fiestas.id),
+    nombre: text().notNull(),
+    precioCentavos: bigint({ mode: "bigint" }).notNull(),
+    /** Link público de venta de este tipo. */
+    tokenVenta: text().notNull().unique(),
+    orden: integer().notNull().default(0),
+    ...tiempos,
+  },
+  (t) => [
+    uniqueIndex("tipos_entrada_fiesta_nombre").on(t.fiestaId, t.nombre),
+    check("tipos_entrada_precio_positivo", sql`${t.precioCentavos} > 0`),
+  ],
+);
+
+export const estadoCompraEntradas = pgEnum("estado_compra_entradas", ["PENDIENTE_PAGO", "PAGADA", "ANULADA"]);
+
+/** Una compra: una o varias entradas pagadas con una sola transferencia desde la cuenta de quien compra. */
+export const comprasEntradas = pgTable(
+  "compras_entradas",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    fiestaId: uuid()
+      .notNull()
+      .references(() => fiestas.id),
+    tipoId: uuid()
+      .notNull()
+      .references(() => tiposEntrada.id),
+    /** DNI de quien transfiere (la primera entrada). Es lo que usa la verificación automática. */
+    dniPagador: text().notNull(),
+    email: text().notNull(),
+    telefono: text(),
+    cantidad: integer().notNull(),
+    precioUnitarioCentavos: bigint({ mode: "bigint" }).notNull(),
+    totalCentavos: bigint({ mode: "bigint" }).notNull(),
+    estado: estadoCompraEntradas().notNull().default("PENDIENTE_PAGO"),
+    pagoId: uuid()
+      .unique()
+      .references(() => pagos.id),
+    /** Código para que el comprador vea el estado de su compra. */
+    codigoConsulta: text().notNull().unique(),
+    ...tiempos,
+  },
+  (t) => [
+    index("compras_pendientes_dni").on(t.dniPagador, t.estado),
+    check("compras_cantidad_valida", sql`${t.cantidad} BETWEEN 1 AND 10`),
+    check("compras_total_cuadra", sql`${t.totalCentavos} = ${t.precioUnitarioCentavos} * ${t.cantidad}`),
+    check("compras_pagada_con_pago", sql`(${t.estado} <> 'PAGADA') OR (${t.pagoId} IS NOT NULL)`),
+    check("compras_pendiente_sin_pago", sql`(${t.estado} <> 'PENDIENTE_PAGO') OR (${t.pagoId} IS NULL)`),
+    check("compras_dni_valido", sql`${t.dniPagador} ~ '^[1-9][0-9]{6,7}$'`),
+  ],
+);
+
+export const estadoEntrada = pgEnum("estado_entrada", ["PENDIENTE_PAGO", "VALIDA", "USADA", "ANULADA"]);
+
+/** Cada entrada es nominal: nombre y DNI, con un código único (el QR). */
+export const entradas = pgTable(
+  "entradas",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    compraId: uuid()
+      .notNull()
+      .references(() => comprasEntradas.id),
+    fiestaId: uuid()
+      .notNull()
+      .references(() => fiestas.id),
+    tipoId: uuid()
+      .notNull()
+      .references(() => tiposEntrada.id),
+    nombre: text().notNull(),
+    dni: text().notNull(),
+    /** El contenido del QR: aleatorio, imposible de adivinar. */
+    codigo: text().notNull().unique(),
+    estado: estadoEntrada().notNull().default("PENDIENTE_PAGO"),
+    usadaEn: momento(),
+    usadaPor: text(),
+    ...tiempos,
+  },
+  (t) => [
+    index("entradas_fiesta").on(t.fiestaId, t.estado),
+    check("entradas_usada_con_hora", sql`(${t.estado} = 'USADA') = (${t.usadaEn} IS NOT NULL)`),
+    check("entradas_dni_valido", sql`${t.dni} ~ '^[1-9][0-9]{6,7}$'`),
   ],
 );

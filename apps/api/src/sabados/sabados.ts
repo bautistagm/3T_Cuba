@@ -9,6 +9,7 @@ import type { BaseDeDatos, Ejecutor } from "../db/cliente.js";
 import { pagos, parametros, sabados } from "../db/esquema.js";
 import { liberarCuotasDelPago } from "../cuotas/cuotas.js";
 import { devolverTransferenciaARevisar } from "../verificacion/transferencias.js";
+import { anularCompraDelPago } from "../fiestas/fiestas.js";
 import { ErrorNegocio, noExiste, soloDueno } from "../errores.js";
 import { esSabado } from "./fechas.js";
 
@@ -138,6 +139,8 @@ export async function anularPago(db: BaseDeDatos, actor: ActorAdmin, pagoId: str
     if (pago.origen === "CUOTA") await liberarCuotasDelPago(tx, pago.id);
     // Si venía de una transferencia leída de la cuenta, la transferencia vuelve a "Revisar".
     await devolverTransferenciaARevisar(tx, pago.id);
+    // Si era una compra de entradas, la compra y sus entradas quedan anuladas.
+    if (pago.origen === "ENTRADA_FIESTA") await anularCompraDelPago(tx, pago.id);
     const [despues] = await tx
       .update(pagos)
       .set({

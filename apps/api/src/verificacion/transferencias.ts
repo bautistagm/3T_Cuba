@@ -9,13 +9,14 @@
  *  - Si no, la deja en "Revisar" para que el dueño diga de quién es.
  * Cada transferencia se guarda una sola vez (su número de Mercado Pago es la clave): nunca se usa dos veces.
  */
-import { asc, desc, eq, gte, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray } from "drizzle-orm";
 import { dniDeCuil, formatearPesos, sumarCentavos } from "@3t/shared";
 import { registrarAuditoria } from "../auditoria/auditoria.js";
 import { registrarAsiento, type ActorAdmin } from "../caja/libro.js";
 import { cuotasQueCancela, pendientesBloqueadas, registrarPagoDeCuotas } from "../cuotas/cuotas.js";
 import type { BaseDeDatos, Ejecutor, Transaccion } from "../db/cliente.js";
-import { jugadores, pagos, parametros, transferenciasRecibidas } from "../db/esquema.js";
+import { comprasEntradas, jugadores, pagos, parametros, transferenciasRecibidas } from "../db/esquema.js";
+import { comprasPendientesQueCoinciden, confirmarCompra } from "../fiestas/fiestas.js";
 import { ErrorNegocio, noExiste, soloDueno } from "../errores.js";
 import type { EntradaCuenta } from "./cruce.js";
 
@@ -158,14 +159,39 @@ async function procesarEntrada(db: BaseDeDatos, entrada: EntradaCuenta): Promise
     };
 
     if (!dni) return revisar("No trae un CUIL/CUIT válido de quien transfirió.");
-    const conEseDni = await tx.select().from(jugadores).where(eq(jugadores.dni, dni)).limit(1);
-    const jugador = conEseDni[0];
-    if (!jugador) return revisar("El DNI no es de ningún jugador. ¿Pagó desde la cuenta de otra persona?");
-    const nombre = `${jugador.nombre} ${jugador.apellido}`;
-    if (jugador.estado !== "ACTIVO") return revisar(`El DNI es de ${nombre}, que está de baja.`, jugador.id);
 
-    const pendientes = await pendientesBloqueadas(tx, jugador.id);
-    const cuotas = cuotasQueCancela(pendientes, entrada.montoCentavos);
+    // ¿Es una compra de entradas? (DNI de quien compra y total exacto)
+    const compras = await comprasPendientesQueCoinciden(tx, dni, entrada.montoCentavos);
+    // ¿Es una cuota? (DNI de un jugador activo y su cuota más vieja, o la suma exacta de las más viejas)
+    const [jugador] = await tx.select().from(jugadores).where(eq(jugadores.dni, dni)).limit(1);
+    const nombre = jugador ? `${jugador.nombre} ${jugador.apellido}` : "";
+    const pendientes = jugador?.estado === "ACTIVO" ? await pendientesBloqueadas(tx, jugador.id) : [];
+    const cuotas = jugador?.estado === "ACTIVO" ? cuotasQueCancela(pendientes, entrada.montoCentavos) : null;
+
+    if (compras.length > 1) return revisar("Hay más de una compra de entradas pendiente de ese DNI por ese mismo total.");
+    const compra = compras[0];
+    if (compra && cuotas) return revisar(`Puede ser la cuota de ${nombre} o su compra de entradas: decidí vos.`, jugador?.id ?? null);
+    if (compra) {
+      const pago = await confirmarCompra(tx, SISTEMA, compra.id, { fecha: entrada.fecha, nota: `Transferencia ${entrada.mpPagoId}` });
+      await tx
+        .update(transferenciasRecibidas)
+        .set({ estado: "CONFIRMADA", resolucion: "ENTRADAS_AUTO", pagoId: pago.id })
+        .where(eq(transferenciasRecibidas.mpPagoId, entrada.mpPagoId));
+      return "CONFIRMADA";
+    }
+
+    if (!jugador) {
+      const [otraCompra] = await tx
+        .select({ total: comprasEntradas.totalCentavos })
+        .from(comprasEntradas)
+        .where(and(eq(comprasEntradas.dniPagador, dni), eq(comprasEntradas.estado, "PENDIENTE_PAGO")))
+        .limit(1);
+      if (otraCompra) {
+        return revisar(`Ese DNI tiene una compra de entradas pendiente por ${formatearPesos(otraCompra.total)}, pero transfirió ${formatearPesos(entrada.montoCentavos)}.`);
+      }
+      return revisar("El DNI no es de ningún jugador ni de una compra de entradas. ¿Pagó desde la cuenta de otra persona?");
+    }
+    if (jugador.estado !== "ACTIVO") return revisar(`El DNI es de ${nombre}, que está de baja.`, jugador.id);
     if (!cuotas) {
       const debe = sumarCentavos(pendientes.map((c) => c.montoCentavos));
       return revisar(
@@ -267,6 +293,25 @@ export async function asignarAJugador(db: BaseDeDatos, actor: ActorAdmin, mpPago
     await tx
       .update(transferenciasRecibidas)
       .set({ estado: "RESUELTA", resolucion: "CUOTA_MANUAL", pagoId: pago.id, resueltoPorAdminId: actor.adminId, resueltoEn: new Date() })
+      .where(eq(transferenciasRecibidas.mpPagoId, mpPagoId));
+    return pago;
+  });
+}
+
+/** Es una compra de entradas: el dueño elige cuál (tiene que ser por el mismo total). */
+export async function asignarACompra(db: BaseDeDatos, actor: ActorAdmin, mpPagoId: string, compraId: string) {
+  exigirDueno(actor);
+  return db.transaction(async (tx) => {
+    const t = await enRevision(tx, mpPagoId);
+    const [compra] = await tx.select().from(comprasEntradas).where(eq(comprasEntradas.id, compraId)).limit(1);
+    if (!compra) throw noExiste("La compra");
+    if (compra.totalCentavos !== t.montoCentavos) {
+      throw new ErrorNegocio(409, "MONTO_DISTINTO", `La compra es por ${formatearPesos(compra.totalCentavos)} y la transferencia por ${formatearPesos(t.montoCentavos)}.`);
+    }
+    const pago = await confirmarCompra(tx, actor, compraId, { fecha: t.fecha, nota: `Transferencia ${t.mpPagoId}` });
+    await tx
+      .update(transferenciasRecibidas)
+      .set({ estado: "RESUELTA", resolucion: "ENTRADAS_MANUAL", pagoId: pago.id, resueltoPorAdminId: actor.adminId, resueltoEn: new Date() })
       .where(eq(transferenciasRecibidas.mpPagoId, mpPagoId));
     return pago;
   });

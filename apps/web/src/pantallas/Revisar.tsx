@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { formatearDni } from "@3t/shared";
-import { api, type CuotaJugador, type EstadoCuenta, type Jugador, type TransferenciaLeida, type TransferenciaParaRevisar } from "../api";
+import { api, type CompraPendiente, type CuotaJugador, type EstadoCuenta, type Jugador, type TransferenciaLeida, type TransferenciaParaRevisar } from "../api";
 import { mensajeDe, useAviso } from "../componentes/comunes";
 import { pesos } from "../plata";
 import { useAdmin } from "../sesion";
@@ -256,6 +256,7 @@ function ResolverTransferencia(props: { transferencia: TransferenciaParaRevisar;
           </button>
         </>
       )}
+      <ComprasQueCoinciden transferencia={t} alListo={props.alListo} alFallar={props.alFallar} />
       <h3 className="subtitulo">O es otra cosa</h3>
       <button type="button" className="boton secundario chico" disabled={enviando}
         onClick={() => {
@@ -279,5 +280,31 @@ function ResolverTransferencia(props: { transferencia: TransferenciaParaRevisar;
         No es del plantel
       </button>
     </div>
+  );
+}
+
+/** Compras de entradas sin pagar por el mismo total: el dueño elige cuál pagó esta transferencia. */
+function ComprasQueCoinciden(props: { transferencia: TransferenciaParaRevisar; alListo: (t: string) => Promise<void>; alFallar: (t: string) => void }) {
+  const [compras, setCompras] = useState<CompraPendiente[]>([]);
+  const { mpPagoId } = props.transferencia;
+  useEffect(() => {
+    api.comprasParaTransferencia(mpPagoId).then((r) => setCompras(r.compras)).catch(() => setCompras([]));
+  }, [mpPagoId]);
+  if (compras.length === 0) return null;
+  return (
+    <>
+      <h3 className="subtitulo">Es una compra de entradas</h3>
+      {compras.map((c) => (
+        <button key={c.id} type="button" className="boton secundario chico"
+          onClick={() => {
+            if (!window.confirm(`¿Esta transferencia paga la compra de ${c.quienCompra} (${c.cantidad} ${c.tipo}, ${c.fiesta})?`)) return;
+            api.asignarTransferenciaACompra(mpPagoId, c.id)
+              .then(() => props.alListo(`Entradas de ${c.quienCompra} pagadas.`))
+              .catch((e: unknown) => props.alFallar(mensajeDe(e)));
+          }}>
+          {c.quienCompra} · {c.cantidad} {c.tipo} · {c.fiesta}
+        </button>
+      ))}
+    </>
   );
 }

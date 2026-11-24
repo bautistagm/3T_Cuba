@@ -101,7 +101,7 @@ describe("lectura automática de la cuenta", () => {
     expect(await leer()).toMatchObject({ nuevas: 3, confirmadas: 0, paraRevisar: 3 });
     const revisar = await transferenciasParaRevisar(conexion.db);
     expect(revisar.map((t) => t.motivo)).toEqual([
-      "El DNI no es de ningún jugador. ¿Pagó desde la cuenta de otra persona?",
+      "El DNI no es de ningún jugador ni de una compra de entradas. ¿Pagó desde la cuenta de otra persona?",
       "Es de Mateo Prueba, pero transfirió $20.000 y debe $35.000 (1 cuota).",
       "No trae un CUIL/CUIT válido de quien transfirió.",
     ]);
