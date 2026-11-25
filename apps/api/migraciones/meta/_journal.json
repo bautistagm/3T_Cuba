@@ -169,6 +169,13 @@
       "when": 1795547529302,
       "tag": "0023_eliminar_fiesta",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1795611521253,
+      "tag": "0024_eliminar_gasto",
+      "breakpoints": true
     }
   ]
 }

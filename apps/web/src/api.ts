@@ -466,6 +466,8 @@ export const api = {
   gastoManual: (id: string, datos: { proveedor?: string; items: ItemParaEnviar[] }) => pedir<unknown>("POST", `/cocinas/${id}/gastos`, datos),
   cerrarCocina: (id: string, forma: FormaCierre, motivo?: string) =>
     pedir<unknown>("POST", `/cocinas/${id}/cerrar`, motivo ? { forma, motivo } : { forma }),
+  eliminarGasto: (id: string, plata: { destino: "VUELVE" } | { destino: "SE_GASTO"; concepto: string } | null) =>
+    pedir<unknown>("POST", `/gastos/${id}/eliminar`, plata ? { plata } : {}),
   anularGasto: (id: string, motivo: string) => pedir<unknown>("POST", `/gastos/${id}/anular`, { motivo }),
   anularMovimientoCocina: (id: string, motivo: string) => pedir<unknown>("POST", `/movimientos-cocina/${id}/anular`, { motivo }),
 

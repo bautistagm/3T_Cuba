@@ -2,12 +2,13 @@
  * Gastos: plata que sale para comprar algo, con el detalle producto por producto.
  * Cada gasto genera un asiento: la cuenta de donde salió la plata baja y suben los egresos por categoría.
  */
-import { asc, eq, inArray } from "drizzle-orm";
+import { asc, eq, inArray, sql } from "drizzle-orm";
+import { z } from "zod";
 import { MONTO_MAXIMO_CENTAVOS, sumarCentavos } from "@3t/shared";
 import { registrarAuditoria, type Actor } from "../auditoria/auditoria.js";
 import { anularAsiento, registrarAsiento, type ActorAdmin } from "../caja/libro.js";
 import type { BaseDeDatos, Ejecutor, Transaccion } from "../db/cliente.js";
-import { cocinas, gastoItems, gastos } from "../db/esquema.js";
+import { archivos, cocinas, gastoItems, gastos, tickets } from "../db/esquema.js";
 import { ErrorNegocio, noExiste, soloDueno } from "../errores.js";
 
 export const CATEGORIAS = ["CARNE", "BEBIDAS", "INSUMOS", "OTROS"] as const;
@@ -121,6 +122,72 @@ export async function anularGasto(db: BaseDeDatos, actor: ActorAdmin, gastoId: s
       .returning();
     await registrarAuditoria(tx, actor, { accion: "GASTO_ANULADO", entidad: "gasto", entidadId: gastoId, antes: gasto, despues });
     return despues;
+  });
+}
+
+export const eliminarGastoSchema = z.discriminatedUnion("destino", [
+  /** No se gastó o la devolvieron: la plata vuelve a la cuenta de donde salió. */
+  z.object({ destino: z.literal("VUELVE") }),
+  /** Se gastó igual: queda como un gasto "Otros" con el nombre que pone el dueño. */
+  z.object({ destino: z.literal("SE_GASTO"), concepto: z.string().trim().min(3, "Poné en qué se gastó (por ejemplo, «Prueba de la app»).").max(120) }),
+]);
+
+/**
+ * Eliminar un gasto (decisión del dueño, 25/11/2026). Solo el dueño.
+ * El gasto, su detalle y su ticket se borran; la plata se reacomoda según lo que elija el dueño, así la caja cierra.
+ * Un gasto de una cocina ya cerrada no se elimina suelto (se cambia eliminando el sábado entero).
+ */
+export async function eliminarGasto(db: BaseDeDatos, actor: ActorAdmin, gastoId: string, pedido: z.input<typeof eliminarGastoSchema> | null) {
+  if (actor.rol !== "DUENO") throw soloDueno("eliminar un gasto");
+  return db.transaction(async (tx) => {
+    const [gasto] = await tx.select().from(gastos).where(eq(gastos.id, gastoId)).for("update");
+    if (!gasto) throw noExiste("El gasto");
+    if (gasto.cocinaId) {
+      const [cocina] = await tx.select().from(cocinas).where(eq(cocinas.id, gasto.cocinaId)).for("update");
+      if (cocina?.estado === "CERRADA") {
+        throw new ErrorNegocio(409, "COCINA_CERRADA", "La cocina de ese sábado ya se cerró y rindió: para cambiarla hay que eliminar el sábado entero.");
+      }
+    }
+    // Un gasto ya anulado no tiene plata: se borra sin preguntar.
+    const datos = gasto.estado === "ANULADO" ? null : eliminarGastoSchema.parse(pedido ?? {});
+    const items = await tx.select().from(gastoItems).where(eq(gastoItems.gastoId, gastoId));
+
+    let reemplazoId: string | null = null;
+    if (datos) {
+      await anularAsiento(tx, actor, { asientoId: gasto.asientoId, motivo: datos.destino === "VUELVE" ? "Gasto eliminado: la plata vuelve" : `Gasto eliminado: pasa a «${datos.concepto}»` });
+      if (datos.destino === "SE_GASTO") {
+        const nuevo = await registrarGasto(tx, actor, {
+          fecha: gasto.fecha,
+          descripcion: datos.concepto,
+          cuentaOrigenCodigo: gasto.cuentaOrigenCodigo,
+          cocinaId: gasto.cocinaId ?? undefined,
+          sabadoId: gasto.sabadoId ?? undefined,
+          origenCarga: "MANUAL",
+          items: [{ descripcion: datos.concepto, categoria: "OTROS", subtotalCentavos: gasto.totalCentavos }],
+        });
+        reemplazoId = nuevo.id;
+      }
+    }
+
+    // Borrado (la base solo lo permite dentro de esta operación). El ticket y su foto también se van.
+    const suyos = await tx.select().from(tickets).where(eq(tickets.gastoId, gastoId));
+    if (suyos.length) {
+      await tx.delete(tickets).where(eq(tickets.gastoId, gastoId));
+      await tx.delete(archivos).where(inArray(archivos.id, suyos.map((t) => t.archivoId)));
+    }
+    await tx.execute(sql`select set_config('app.eliminando', ${`gasto:${gastoId}`}, true)`);
+    await tx.delete(gastoItems).where(eq(gastoItems.gastoId, gastoId));
+    await tx.delete(gastos).where(eq(gastos.id, gastoId));
+    await tx.execute(sql`select set_config('app.eliminando', '', true)`);
+
+    await registrarAuditoria(tx, actor, {
+      accion: "GASTO_ELIMINADO",
+      entidad: "gasto",
+      entidadId: gastoId,
+      antes: { gasto, items },
+      despues: datos ? { plata: datos.destino, ...(datos.destino === "SE_GASTO" ? { concepto: datos.concepto, gastoNuevoId: reemplazoId } : {}) } : null,
+    });
+    return { reemplazoId };
   });
 }
 

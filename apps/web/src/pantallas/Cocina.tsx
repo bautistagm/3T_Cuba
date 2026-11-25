@@ -3,6 +3,7 @@ import { useLocation, useParams } from "react-router";
 import { api, type FormaCierre, type Gasto, type Medio, type MovimientoCocina, type ResumenCocina, type Ticket } from "../api";
 import { Cargando, Encabezado, mensajeDe, pedirMotivo, SelectorMedio, useAviso } from "../componentes/comunes";
 import { EditorItems, NOMBRES_CATEGORIA } from "../componentes/EditorItems";
+import { BotonEliminar, EliminarConPlata } from "../componentes/EliminarFiesta";
 import { prepararFoto } from "../fotos";
 import { hora, leerMonto, pesos } from "../plata";
 import { useAdmin } from "../sesion";
@@ -25,6 +26,7 @@ export function PantallaCocina() {
   const [token, setToken] = useState<string | null>((ubicacion.state as { token?: string } | null)?.token ?? null);
   const [panel, setPanel] = useState<"plata" | "gasto" | "cerrar" | null>(null);
   const [revisando, setRevisando] = useState<Ticket | null>(null);
+  const [eliminando, setEliminando] = useState<Gasto | null>(null);
   const { setAviso, Aviso } = useAviso();
 
   const cargar = useCallback(async () => {
@@ -159,6 +161,15 @@ export function PantallaCocina() {
                   <span>{g.origenCarga === "IA" ? "Leído por IA" : "Cargado a mano"}{g.estado === "ANULADO" ? ` · ANULADO: ${g.motivoAnulacion ?? ""}` : ""}</span>
                 </span>
                 <strong>{pesos(g.totalCentavos)}</strong>
+                {esDueno && (
+                  <BotonEliminar etiqueta={`Eliminar el gasto ${g.proveedor ?? g.descripcion}`} alTocar={() => {
+                    if (!abierta) {
+                      setAviso({ tipo: "error", texto: "Esta cocina ya se cerró y rindió: un gasto suelto no se elimina. Para cambiarla, vas a poder eliminar el sábado entero." });
+                      return;
+                    }
+                    setEliminando(g);
+                  }} />
+                )}
               </summary>
               <ul className="items">
                 {g.items.map((i, k) => (
@@ -174,6 +185,26 @@ export function PantallaCocina() {
             </details>
           ))}
         </section>
+
+        {eliminando && (
+          <EliminarConPlata
+            titulo={`Eliminar el gasto «${eliminando.proveedor ?? eliminando.descripcion}»`}
+            montoCentavos={eliminando.estado === "ANULADO" ? null : eliminando.totalCentavos}
+            sinPlata="Este gasto ya estaba anulado: se borra y la caja no cambia."
+            pregunta={<>Este gasto sacó <strong>{pesos(eliminando.totalCentavos)}</strong> de la caja. Para que cierre, decí qué pasó con esa plata:</>}
+            opciones={[
+              { valor: "VUELVE", titulo: "No se gastó o la devolvieron", ayuda: "La plata vuelve a donde estaba." },
+              { valor: "SE_GASTO", titulo: "Se gastó igual", ayuda: "Queda como otro gasto, con el nombre que le pongas.", pideNombre: { etiqueta: "¿En qué se gastó?", ejemplo: "Ej: Prueba de la app" } },
+            ]}
+            boton="Eliminar gasto"
+            alCerrar={() => setEliminando(null)}
+            alConfirmar={async (opcion, nombre) => {
+              await api.eliminarGasto(eliminando.id, opcion === null ? null : opcion === "VUELVE" ? { destino: "VUELVE" } : { destino: "SE_GASTO", concepto: nombre });
+              setEliminando(null);
+              await listo("Gasto eliminado.");
+            }}
+          />
+        )}
 
         {r.movimientos.length > 0 && (
           <section className="tarjeta" aria-labelledby="titulo-movimientos">

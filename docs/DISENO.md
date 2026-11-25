@@ -125,7 +125,10 @@ App de gestión del tercer tiempo del plantel: cobro de cuotas, fiestas, sábado
      - Sin plata asociada: se borra todo.
      - Con plata: la app avisa cuánto hay y el dueño elige qué pasó con esa plata antes de borrar: **"La devolví"** (cada pago se anula y la plata sale de la caja) o **"Queda en la caja"** (cada pago se anula y la misma plata entra como **Otro ingreso** con el nombre que el dueño escribe, por ejemplo "Prueba de la app").
      - Los datos (fiesta, entradas, compras, tandas) se borran de la base. Los movimientos de caja y los pagos anulados quedan, así la caja siempre cierra. La auditoría guarda qué se eliminó, sin datos personales.
-     - Fiestas: ✅. Pendientes: gastos, pagos de sábados, meses de cuota y el resto.
+     - Fiestas: ✅.
+     - Gastos ✅ (25/11/2026): "No se gastó o la devolvieron" (la plata vuelve a donde estaba) o "Se gastó igual" (queda un gasto Otros con el nombre que escribe el dueño, en la misma cocina si era de una cocina). El gasto, su detalle y la foto del ticket se borran. Un gasto ya anulado se borra sin preguntar.
+     - Un gasto de una cocina ya cerrada no se elimina suelto: para eso se elimina el sábado entero y se reacomoda la plata (decisión del dueño, 25/11/2026; pendiente).
+     - Pendientes: eliminar sábados, pagos de sábados, meses de cuota y el resto.
 3. **Libro de caja de doble partida**: cada evento de plata es un asiento con dos o más movimientos que suman exactamente cero (de dónde sale y adónde va). El saldo se calcula sumando movimientos; nunca se guarda un saldo "a mano". La base de datos rechaza asientos desbalanceados, cambios y borrados, y solo acepta anulaciones que sean el espejo exacto del asiento original.
 4. **Auditoría**: cada cambio de datos guarda quién, cuándo, qué había antes y qué hay después.
 5. **Mercado Pago solo en lectura**: la app lee los movimientos de la cuenta pero no puede mover plata. Cada movimiento se usa para confirmar un único pago.
