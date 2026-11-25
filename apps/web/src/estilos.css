@@ -364,3 +364,6 @@ input[type="search"] { width: 100%; }
 .grafico figcaption { margin-top: 4px; }
 .barra-horizontal { width: 90px; height: 8px; border-radius: 99px; background: var(--gris-suave); overflow: hidden; flex: none; align-self: center; }
 .barra-horizontal > span { display: block; height: 100%; background: var(--azul); border-radius: 99px; }
+.boton-eliminar-texto { border: none; background: transparent; color: #8a938c; font: inherit; font-size: 14px; padding: 8px; cursor: pointer; align-self: center; }
+.boton-eliminar-texto span { font-size: 20px; vertical-align: -2px; margin-right: 4px; }
+.boton-eliminar-texto:hover { color: var(--texto); }

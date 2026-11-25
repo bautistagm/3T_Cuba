@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { BotonEliminar } from "../componentes/EliminarFiesta";
+import { EliminarSabado } from "../componentes/EliminarSabado";
 import { api, type Cobro, type DetalleSabado, type FilaSabado, type Medio } from "../api";
 import { Cargando, Encabezado, mensajeDe, pedirMotivo, SelectorMedio, useAviso } from "../componentes/comunes";
 import { fechaLarga, hora, leerMonto, pesos } from "../plata";
@@ -13,6 +15,7 @@ export function PantallaSabado() {
   const [error, setError] = useState<string | null>(null);
   const [cobrando, setCobrando] = useState(false);
   const [verOtros, setVerOtros] = useState(false);
+  const [eliminando, setEliminando] = useState<string | null>(null);
   const { setAviso, Aviso } = useAviso();
 
   const cargar = useCallback(async () => {
@@ -68,6 +71,18 @@ export function PantallaSabado() {
       <Encabezado volverA="/" volverTexto="3T" titulo={`Sábado ${fechaLarga(sabado.fecha).replace(/^sábado,?\s*/i, "")}`} />
       <main className="contenido">
         <Aviso />
+
+        {eliminando && (
+          <EliminarSabado sabadoId={eliminando} alCerrar={() => setEliminando(null)}
+            alEliminar={() => {
+              const eraEste = eliminando === sabado.id;
+              setEliminando(null);
+              setAviso({ tipo: "ok", texto: "Sábado eliminado." });
+              if (eraEste) void navegar("/sabados", { replace: true });
+              setVerOtros(false);
+              void cargar();
+            }} />
+        )}
 
         <label className="interruptor tarjeta">
           <span>
@@ -130,7 +145,12 @@ export function PantallaSabado() {
         <button type="button" className="boton secundario" onClick={() => setVerOtros((v) => !v)}>
           {verOtros ? "Ocultar otros sábados" : "Ver otros sábados"}
         </button>
-        {verOtros && <OtrosSabados actual={sabado.id} />}
+        {verOtros && <OtrosSabados actual={sabado.id} alEliminar={yo.rol === "DUENO" ? setEliminando : undefined} />}
+        {yo.rol === "DUENO" && (
+          <button type="button" className="boton-eliminar-texto" onClick={() => setEliminando(sabado.id)}>
+            <span aria-hidden="true">×</span> Eliminar este sábado
+          </button>
+        )}
       </main>
     </>
   );
@@ -297,7 +317,7 @@ function TarjetaCocina(props: { detalle: DetalleSabado; alCrear: (cocinaId: stri
   );
 }
 
-function OtrosSabados({ actual }: { actual: string }) {
+function OtrosSabados({ actual, alEliminar }: { actual: string; alEliminar?: ((id: string) => void) | undefined }) {
   const [lista, setLista] = useState<FilaSabado[] | null>(null);
   useEffect(() => {
     void api.listarSabados().then((r) => setLista(r.sabados)).catch(() => setLista([]));
@@ -312,6 +332,7 @@ function OtrosSabados({ actual }: { actual: string }) {
               <strong>{fechaLarga(s.fecha)}</strong>
               <span>{s.esLocal ? "De local · " : ""}{s.invitados} invitados · {pesos(s.cobradoCentavos)}</span>
             </Link>
+            {alEliminar && <BotonEliminar etiqueta={`Eliminar el sábado ${fechaLarga(s.fecha)}`} alTocar={() => alEliminar(s.id)} />}
           </li>
         ))}
         {lista.length <= 1 && <li className="ayuda">Todavía no hay otros sábados.</li>}
