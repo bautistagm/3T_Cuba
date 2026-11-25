@@ -451,6 +451,12 @@ export const api = {
   sabado: (id: string) => pedir<DetalleSabado>("GET", `/sabados/${id}`),
   sabadoDeFecha: (fecha: string) => pedir<DetalleSabado>("POST", "/sabados", { fecha }),
   listarSabados: () => pedir<{ sabados: FilaSabado[] }>("GET", "/sabados"),
+  antesDeEliminarSabado: (id: string) =>
+    pedir<{ fecha: string; cobros: number; cobrosCentavos: string; tieneCocina: boolean; cocinaConPlata: boolean; cocinaGastadoCentavos: string; enManosDeLaCamadaCentavos: string }>("GET", `/sabados/${id}/eliminar`),
+  eliminarSabado: (
+    id: string,
+    datos: { cobros?: { destino: "DEVUELTOS" } | { destino: "QUEDAN"; concepto: string }; cocina?: { destino: "VOLVIO" } | { destino: "SE_GASTO"; concepto: string } },
+  ) => pedir<{ ok: true }>("POST", `/sabados/${id}/eliminar`, datos),
   marcarLocal: (id: string, esLocal: boolean) => pedir<DetalleSabado>("POST", `/sabados/${id}/local`, { esLocal }),
   fijarPrecioInvitado: (montoCentavos: string) => pedir<unknown>("PUT", "/parametros/precio-invitado", { montoCentavos }),
   cobrarInvitado: (sabadoId: string, datos: { medio: Medio; nombre?: string; camada?: string; nota?: string }) =>
