@@ -85,6 +85,14 @@ export function EliminarFiesta(props: { fiestaId: string; alCerrar: () => void; 
   );
 }
 
+/** Las dos opciones de siempre para la plata cobrada. */
+export const OPCIONES_COBRADO: OpcionPlata[] = [
+  { valor: "DEVUELTA", titulo: "La devolví", ayuda: "La plata sale de la caja." },
+  { valor: "QUEDA", titulo: "Queda en la caja", ayuda: "Pasa a ser otro ingreso, con el nombre que le pongas.", pideNombre: { etiqueta: "¿Qué ingreso es?", ejemplo: "Ej: Prueba de la app" } },
+];
+export const plataDe = (opcion: string | null, nombre: string) =>
+  opcion === null ? undefined : opcion === "QUEDA" ? ({ destino: "QUEDA", concepto: nombre } as const) : ({ destino: "DEVUELTA" } as const);
+
 export interface OpcionPlata {
   valor: string;
   titulo: string;

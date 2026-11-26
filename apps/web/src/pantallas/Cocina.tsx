@@ -4,6 +4,7 @@ import { api, type FormaCierre, type Gasto, type Medio, type MovimientoCocina, t
 import { Cargando, Encabezado, mensajeDe, pedirMotivo, SelectorMedio, useAviso } from "../componentes/comunes";
 import { EditorItems, NOMBRES_CATEGORIA } from "../componentes/EditorItems";
 import { BotonEditar, BotonEliminar, EliminarConPlata } from "../componentes/EliminarFiesta";
+import { EditarRapido } from "../componentes/EditarRapido";
 import { prepararFoto } from "../fotos";
 import { hora, leerMonto, montoParaEditar, pesos } from "../plata";
 import { useAdmin } from "../sesion";
@@ -28,6 +29,8 @@ export function PantallaCocina() {
   const [revisando, setRevisando] = useState<Ticket | null>(null);
   const [eliminando, setEliminando] = useState<Gasto | null>(null);
   const [editandoGasto, setEditandoGasto] = useState<Gasto | null>(null);
+  const [editandoMov, setEditandoMov] = useState<MovimientoCocina | null>(null);
+  const [editandoDatos, setEditandoDatos] = useState(false);
   const { setAviso, Aviso } = useAviso();
 
   const cargar = useCallback(async () => {
@@ -59,27 +62,9 @@ export function PantallaCocina() {
     await cargar();
   }
 
-  async function anularGasto(g: Gasto) {
-    const motivo = pedirMotivo("este gasto");
-    if (!motivo) return;
-    try {
-      await api.anularGasto(g.id, motivo);
-      await listo("Gasto anulado.");
-    } catch (e) {
-      setAviso({ tipo: "error", texto: mensajeDe(e) });
-    }
-  }
 
-  async function anularMovimiento(m: MovimientoCocina) {
-    const motivo = pedirMotivo("este movimiento");
-    if (!motivo) return;
-    try {
-      await api.anularMovimientoCocina(m.id, motivo);
-      await listo("Movimiento anulado.");
-    } catch (e) {
-      setAviso({ tipo: "error", texto: mensajeDe(e) });
-    }
-  }
+
+
 
   return (
     <>
@@ -93,6 +78,7 @@ export function PantallaCocina() {
         <Aviso />
 
         <section className="tarjeta" aria-label="Plata de la cocina">
+          {esDueno && <span className="esquina"><BotonEditar etiqueta="Editar datos de la cocina" alTocar={() => setEditandoDatos(true)} /></span>}
           <div className="numeros">
             <span><span className="ayuda">Recibió</span><strong>{pesos(r.adelantadoCentavos)}</strong></span>
             <span><span className="ayuda">Gastó</span><strong>{pesos(r.gastadoCentavos)}</strong></span>
@@ -181,9 +167,6 @@ export function PantallaCocina() {
                   </li>
                 ))}
               </ul>
-              {esDueno && abierta && g.estado === "CONFIRMADO" && (
-                <button type="button" className="enlace" onClick={() => void anularGasto(g)}>Anular gasto</button>
-              )}
             </details>
           ))}
         </section>
@@ -226,6 +209,35 @@ export function PantallaCocina() {
           />
         )}
 
+        {editandoMov && (
+          <EditarRapido
+            titulo={`Corregir: ${NOMBRE_MOVIMIENTO[editandoMov.tipo]}`}
+            campos={[{ clave: "monto", etiqueta: "Monto", tipo: "monto", valor: montoParaEditar(editandoMov.montoCentavos) }]}
+            alCerrar={() => setEditandoMov(null)}
+            alGuardar={async (v) => {
+              await api.editarMovimientoCocina(editandoMov.id, v.monto ?? "0");
+              setEditandoMov(null);
+              await listo("Monto corregido.");
+            }}
+          />
+        )}
+        {editandoDatos && (
+          <EditarRapido
+            titulo="Datos de la cocina"
+            campos={[
+              { clave: "camada", etiqueta: "Camada", tipo: "texto", valor: r.cocina.camada, requerido: true, max: 60 },
+              { clave: "responsable", etiqueta: "Responsable", tipo: "texto", valor: r.cocina.responsableNombre, requerido: true, max: 80 },
+              { clave: "telefono", etiqueta: "Teléfono (opcional)", tipo: "texto", valor: r.cocina.responsableTelefono ?? "", max: 30 },
+            ]}
+            alCerrar={() => setEditandoDatos(false)}
+            alGuardar={async (v) => {
+              await api.editarCocina(r.cocina.id, { camada: v.camada ?? "", responsableNombre: v.responsable ?? "", ...(v.telefono ? { responsableTelefono: v.telefono } : {}) });
+              setEditandoDatos(false);
+              await listo("Datos de la cocina guardados.");
+            }}
+          />
+        )}
+
         {r.movimientos.length > 0 && (
           <section className="tarjeta" aria-labelledby="titulo-movimientos">
             <h2 id="titulo-movimientos">Plata entre el plantel y la camada</h2>
@@ -238,8 +250,14 @@ export function PantallaCocina() {
                   </span>
                   <span className="lado">
                     <strong>{pesos(m.montoCentavos)}</strong>
-                    {esDueno && abierta && m.estado === "CONFIRMADO" && (
-                      <button type="button" className="enlace" onClick={() => void anularMovimiento(m)}>Anular</button>
+                    {esDueno && abierta && (
+                      <span className="iconos">
+                        {m.estado === "CONFIRMADO" && <BotonEditar etiqueta={`Editar ${NOMBRE_MOVIMIENTO[m.tipo]}`} alTocar={() => setEditandoMov(m)} />}
+                        <BotonEliminar etiqueta={`Eliminar ${NOMBRE_MOVIMIENTO[m.tipo]}`} alTocar={() => {
+                          if (!window.confirm(`¿Eliminar este movimiento de ${pesos(m.montoCentavos)}? Es como si no se hubiera hecho: la plata vuelve a donde estaba.`)) return;
+                          void api.eliminarMovimientoCocina(m.id).then(() => listo("Movimiento eliminado.")).catch((e: unknown) => setAviso({ tipo: "error", texto: mensajeDe(e) }));
+                        }} />
+                      </span>
                     )}
                   </span>
                 </li>

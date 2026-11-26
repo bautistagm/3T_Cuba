@@ -3,7 +3,8 @@ import { Link, useNavigate, useParams } from "react-router";
 import { formatearDni } from "@3t/shared";
 import { api, type DetalleFiesta, type FiestaListada } from "../api";
 import { Encabezado, mensajeDe, useAviso } from "../componentes/comunes";
-import { BotonEditar, BotonEliminar, EliminarFiesta } from "../componentes/EliminarFiesta";
+import { BotonEditar, BotonEliminar, EliminarConPlata, EliminarFiesta, OPCIONES_COBRADO, plataDe } from "../componentes/EliminarFiesta";
+import { EditarRapido } from "../componentes/EditarRapido";
 import { GraficosFiesta } from "../componentes/GraficosFiesta";
 import { leerMonto, montoParaEditar, pesos } from "../plata";
 import { useAdmin } from "../sesion";
@@ -184,6 +185,8 @@ export function PantallaFiesta() {
   const [copiado, setCopiado] = useState<string | null>(null);
   const [eliminando, setEliminando] = useState(false);
   const [editando, setEditando] = useState(false);
+  const [editandoEntrada, setEditandoEntrada] = useState<DetalleFiesta["entradas"][number] | null>(null);
+  const [eliminandoCompra, setEliminandoCompra] = useState<DetalleFiesta["entradas"][number] | null>(null);
   const irA = useNavigate();
   const { setAviso, Aviso } = useAviso();
 
@@ -252,6 +255,45 @@ export function PantallaFiesta() {
 
         <GraficosFiesta d={d} />
 
+        {editandoEntrada && (
+          <EditarRapido
+            titulo="Editar entrada"
+            campos={[
+              { clave: "nombre", etiqueta: "Nombre y apellido", tipo: "texto", valor: editandoEntrada.nombre, requerido: true, max: 80 },
+              { clave: "dni", etiqueta: "DNI", tipo: "texto", valor: editandoEntrada.dni, requerido: true, max: 20 },
+            ]}
+            ayuda="El QR sigue siendo el mismo."
+            alCerrar={() => setEditandoEntrada(null)}
+            alGuardar={async (v) => {
+              await api.editarEntrada(editandoEntrada.id, { nombre: v.nombre ?? "", dni: v.dni ?? "" });
+              setEditandoEntrada(null);
+              setAviso({ tipo: "ok", texto: "Entrada editada." });
+              await cargar();
+            }}
+          />
+        )}
+        {eliminandoCompra && (() => {
+          const deLaCompra = d.entradas.filter((x) => x.compraId === eliminandoCompra.compraId);
+          const pagada = deLaCompra.some((x) => x.estado === "VALIDA" || x.estado === "USADA");
+          const nombres = deLaCompra.map((x) => x.nombre).join(", ");
+          return (
+            <EliminarConPlata
+              titulo={`Eliminar la compra de ${eliminandoCompra.nombre}`}
+              montoCentavos={pagada ? eliminandoCompra.compraTotalCentavos : null}
+              sinPlata={`Se borra la compra con ${deLaCompra.length === 1 ? "su entrada" : `sus ${deLaCompra.length} entradas (${nombres})`}. No estaba pagada: la caja no cambia.`}
+              pregunta={<>Se borra la compra con {deLaCompra.length === 1 ? "su entrada" : `sus ${deLaCompra.length} entradas (${nombres})`}. Se pagaron <strong>{pesos(eliminandoCompra.compraTotalCentavos)}</strong>: ¿qué pasó con esa plata?</>}
+              opciones={OPCIONES_COBRADO}
+              boton="Eliminar compra"
+              alCerrar={() => setEliminandoCompra(null)}
+              alConfirmar={async (opcion, nombre) => {
+                await api.eliminarCompra(eliminandoCompra.compraId, plataDe(opcion, nombre));
+                setEliminandoCompra(null);
+                setAviso({ tipo: "ok", texto: "Compra eliminada." });
+                await cargar();
+              }}
+            />
+          );
+        })()}
         {editando && (
           <div className="capa" role="dialog" aria-modal="true">
             <div className="ventana">
@@ -340,11 +382,11 @@ export function PantallaFiesta() {
                       reenviar
                     </button>
                   )}
-                  {esDueno && e.estado === "PENDIENTE_PAGO" && (
-                    <button type="button" className="enlace"
-                      onClick={() => window.confirm(`¿Anular la compra de ${e.nombre}? (nunca se pagó)`) && void hacer(() => api.anularCompraEntradas(e.compraId), "Compra anulada.")}>
-                      anular
-                    </button>
+                  {esDueno && (
+                    <span className="iconos">
+                      {e.estado !== "ANULADA" && <BotonEditar etiqueta={`Editar la entrada de ${e.nombre}`} alTocar={() => setEditandoEntrada(e)} />}
+                      <BotonEliminar etiqueta={`Eliminar la compra de ${e.nombre}`} alTocar={() => setEliminandoCompra(e)} />
+                    </span>
                   )}
                 </span>
               </li>
@@ -368,6 +410,7 @@ function EstadoEmail(props: { email: string; estado: DetalleFiesta["emails"][str
 /** Tandas (opcionales): precios por fecha. Manda la primera que no terminó; después, el precio del tipo. */
 function PreciosYTandas(props: { tipos: DetalleFiesta["tipos"]; hacer: (accion: () => Promise<unknown>, texto: string) => Promise<void> }) {
   const [agregandoA, setAgregandoA] = useState<string | null>(null);
+  const [editandoTanda, setEditandoTanda] = useState<DetalleFiesta["tipos"][number]["tandas"][number] | null>(null);
   const [precio, setPrecio] = useState("");
   const [dia, setDia] = useState("");
   const [horaFin, setHoraFin] = useState("23:59");
@@ -388,6 +431,27 @@ function PreciosYTandas(props: { tipos: DetalleFiesta["tipos"]; hacer: (accion: 
     <section className="tarjeta">
       <h2>Precios y tandas</h2>
       <p className="ayuda">Opcional. Cada tanda tiene su precio y hasta cuándo vale. Cuando terminan todas, vale el precio final. Quien carga la compra paga el precio de ese momento.</p>
+      {editandoTanda && (() => {
+        const partes = partesFecha(editandoTanda.hasta);
+        return (
+          <EditarRapido
+            titulo="Editar tanda"
+            campos={[
+              { clave: "precio", etiqueta: "Precio de la tanda", tipo: "monto", valor: montoParaEditar(editandoTanda.precioCentavos) },
+              { clave: "dia", etiqueta: "Vale hasta el día", tipo: "texto", formato: "date", valor: partes.fecha, requerido: true, max: 10 },
+              { clave: "hora", etiqueta: "Hora", tipo: "texto", formato: "time", valor: partes.hora, requerido: true, max: 5 },
+            ]}
+            alCerrar={() => setEditandoTanda(null)}
+            alGuardar={async (v) => {
+              const hasta = new Date(`${v.dia}T${v.hora}:00-03:00`);
+              if (Number.isNaN(hasta.getTime())) throw new Error("La fecha o la hora no son válidas.");
+              await api.editarTanda(editandoTanda.id, { precioCentavos: v.precio ?? "0", hasta: hasta.toISOString() });
+              setEditandoTanda(null);
+              await props.hacer(async () => undefined, "Tanda editada.");
+            }}
+          />
+        );
+      })()}
       {props.tipos.map((t) => (
         <div key={t.id} className="bloque-tandas">
           <div className="fila-titulo">
@@ -404,7 +468,10 @@ function PreciosYTandas(props: { tipos: DetalleFiesta["tipos"]; hacer: (accion: 
                   <span>{x.termino ? "Terminó el" : "Hasta el"} {fechaFiesta(x.hasta)}</span>
                 </span>
                 {x.termino ? <span className="chip gris">Terminó</span> : (
-                  <button type="button" className="enlace" onClick={() => window.confirm("¿Quitar esta tanda?") && void props.hacer(() => api.quitarTanda(x.id), "Tanda quitada.")}>quitar</button>
+                  <span className="iconos">
+                    <BotonEditar etiqueta={`Editar la ${i + 1}ª tanda`} alTocar={() => setEditandoTanda(x)} />
+                    <BotonEliminar etiqueta={`Quitar la ${i + 1}ª tanda`} alTocar={() => window.confirm("¿Quitar esta tanda?") && void props.hacer(() => api.quitarTanda(x.id), "Tanda quitada.")} />
+                  </span>
                 )}
               </li>
             ))}

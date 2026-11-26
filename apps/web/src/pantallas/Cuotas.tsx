@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { enlaceWhatsApp } from "@3t/shared";
 import { api, type CuotaJugador, type Deudor, type MesCuota } from "../api";
 import { mensajeDe, pedirMotivo, useAviso } from "../componentes/comunes";
-import { BotonEditar, BotonEliminar, EliminarConPlata } from "../componentes/EliminarFiesta";
+import { BotonEditar, BotonEliminar, EliminarConPlata, OPCIONES_COBRADO, plataDe } from "../componentes/EliminarFiesta";
+import { EditarRapido } from "../componentes/EditarRapido";
 import { leerMonto, montoParaEditar, pesos } from "../plata";
 import { useAdmin } from "../sesion";
 
@@ -288,6 +289,8 @@ export function CuotasDelJugador(props: { jugadorId: string; nombre: string; act
   const [datos, setDatos] = useState<{ cuotas: CuotaJugador[]; mesesSinCuota: { periodoId: string; mes: string; montoCentavos: string }[] } | null>(null);
   const [elegidas, setElegidas] = useState<Set<string>>(new Set());
   const [cobrando, setCobrando] = useState(false);
+  const [editandoCuota, setEditandoCuota] = useState<CuotaJugador | null>(null);
+  const [eliminandoCuota, setEliminandoCuota] = useState<CuotaJugador | null>(null);
   const alFallar = useRef(props.alFallar);
   alFallar.current = props.alFallar;
   const { jugadorId } = props;
@@ -324,6 +327,37 @@ export function CuotasDelJugador(props: { jugadorId: string; nombre: string; act
 
   return (
     <div className="cuotas-jugador">
+      {editandoCuota && (
+        <EditarRapido
+          titulo={`Cuota de ${editandoCuota.mes}`}
+          campos={[{ clave: "monto", etiqueta: "Monto", tipo: "monto", valor: montoParaEditar(editandoCuota.montoCentavos) }]}
+          ayuda={`Solo para ${props.nombre}.`}
+          alCerrar={() => setEditandoCuota(null)}
+          alGuardar={async (v) => {
+            await api.editarCuota(editandoCuota.id, v.monto ?? "0");
+            setEditandoCuota(null);
+            props.alCambiar(`Cuota de ${editandoCuota.mes} corregida.`);
+            await cargar();
+          }}
+        />
+      )}
+      {eliminandoCuota && (
+        <EliminarConPlata
+          titulo={`Eliminar la cuota de ${eliminandoCuota.mes}`}
+          montoCentavos={eliminandoCuota.estado === "PAGADO" ? eliminandoCuota.montoCentavos : null}
+          sinPlata={`Se borra la cuota de ${eliminandoCuota.mes} de ${props.nombre}. No estaba pagada: la caja no cambia.`}
+          pregunta={<>{props.nombre} ya pagó <strong>{pesos(eliminandoCuota.montoCentavos)}</strong> de esta cuota. Si ese pago cubría otros meses, siguen pagados. ¿Qué pasó con esta plata?</>}
+          opciones={OPCIONES_COBRADO}
+          boton="Eliminar cuota"
+          alCerrar={() => setEliminandoCuota(null)}
+          alConfirmar={async (opcion, nombre) => {
+            await api.eliminarCuota(eliminandoCuota.id, plataDe(opcion, nombre));
+            setEliminandoCuota(null);
+            props.alCambiar(`Cuota de ${eliminandoCuota.mes} eliminada.`);
+            await cargar();
+          }}
+        />
+      )}
       <h3>Cuotas</h3>
       {datos.cuotas.length === 0 && <p className="ayuda">No tiene cuotas cargadas.</p>}
       <ul className="lista">
@@ -345,11 +379,11 @@ export function CuotasDelJugador(props: { jugadorId: string; nombre: string; act
             )}
             <span className="acciones-cuota">
               <span className={`chip ${ESTADO[c.estado].chip}`}>{ESTADO[c.estado].texto}</span>
-              {props.esDueno && c.estado === "PENDIENTE" && (
-                <button type="button" className="enlace" onClick={() => {
-                  const motivo = pedirMotivo(`la cuota de ${c.mes} (no se le cobra)`);
-                  if (motivo) void hacer(() => api.anularCuota(c.id, motivo), `Cuota de ${c.mes} anulada.`);
-                }}>anular</button>
+              {props.esDueno && (
+                <span className="iconos">
+                  {c.estado === "PENDIENTE" && <BotonEditar etiqueta={`Editar la cuota de ${c.mes}`} alTocar={() => setEditandoCuota(c)} />}
+                  <BotonEliminar etiqueta={`Eliminar la cuota de ${c.mes}`} alTocar={() => setEliminandoCuota(c)} />
+                </span>
               )}
               {props.esDueno && c.estado === "PAGADO" && c.pagoId && (
                 <button type="button" className="enlace" onClick={() => {
