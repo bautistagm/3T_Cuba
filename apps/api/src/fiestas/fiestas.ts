@@ -167,6 +167,63 @@ export async function detalleFiesta(db: BaseDeDatos, fiestaId: string, actor: Ac
   };
 }
 
+export const editarFiestaSchema = z.object({
+  nombre: z.string().trim().min(2, "Poné el nombre o motivo de la fiesta.").max(80),
+  fechaHora: z.coerce.date({ invalid_type_error: "La fecha no es válida." }),
+  lugar: z.string().trim().max(120).optional(),
+  /** Los tipos que ya existen (con id) se renombran o cambian de precio; los nuevos (sin id) se agregan. */
+  tipos: z
+    .array(z.object({ id: z.string().uuid().optional(), nombre: z.string().trim().min(1).max(30), precioCentavos: z.coerce.bigint().positive("El precio tiene que ser mayor a cero.") }))
+    .min(1)
+    .max(6),
+});
+
+/**
+ * Editar una fiesta (solo el dueño, decisión del 26/11/2026). Un precio nuevo vale para las compras que se carguen
+ * desde ahora: las compras ya cargadas mantienen el suyo.
+ */
+export async function editarFiesta(db: BaseDeDatos, actor: ActorAdmin, fiestaId: string, pedido: z.input<typeof editarFiestaSchema>) {
+  if (actor.rol !== "DUENO") throw soloDueno("editar fiestas");
+  const datos = editarFiestaSchema.parse(pedido);
+  const nombres = new Set(datos.tipos.map((t) => t.nombre.toLowerCase()));
+  if (nombres.size !== datos.tipos.length) throw new ErrorNegocio(400, "TIPO_REPETIDO", "Hay dos tipos de entrada con el mismo nombre.");
+  return db.transaction(async (tx) => {
+    const [fiesta] = await tx.select().from(fiestas).where(eq(fiestas.id, fiestaId)).for("update");
+    if (!fiesta) throw noExiste("La fiesta");
+    const actuales = await tx.select().from(tiposEntrada).where(eq(tiposEntrada.fiestaId, fiestaId)).orderBy(asc(tiposEntrada.orden));
+    for (const t of datos.tipos) {
+      if (t.id && !actuales.some((a) => a.id === t.id)) throw noExiste("El tipo de entrada");
+    }
+    if (actuales.some((a) => !datos.tipos.some((t) => t.id === a.id))) {
+      throw new ErrorNegocio(400, "TIPO_FALTANTE", "Un tipo de entrada no se puede sacar al editar.");
+    }
+    const ids = actuales.map((a) => a.id);
+    const ultimaTanda = ids.length
+      ? (await tx.select({ hasta: sql<Date | null>`max(${tandas.hasta})` }).from(tandas).where(and(inArray(tandas.tipoId, ids), gt(tandas.hasta, new Date()))))[0]?.hasta
+      : null;
+    if (ultimaTanda && new Date(ultimaTanda) >= datos.fechaHora) {
+      throw new ErrorNegocio(400, "FECHA_ANTES_DE_TANDA", "Hay una tanda que termina después de esa fecha: cambiá o quitá la tanda primero.");
+    }
+
+    await tx.update(fiestas).set({ nombre: datos.nombre, fechaHora: datos.fechaHora, lugar: datos.lugar?.trim() || null }).where(eq(fiestas.id, fiestaId));
+    let orden = actuales.length;
+    for (const t of datos.tipos) {
+      if (t.id) {
+        await tx.update(tiposEntrada).set({ nombre: t.nombre, precioCentavos: t.precioCentavos }).where(eq(tiposEntrada.id, t.id));
+      } else {
+        await tx.insert(tiposEntrada).values({ fiestaId, nombre: t.nombre, precioCentavos: t.precioCentavos, tokenVenta: token(12), orden: orden++ });
+      }
+    }
+    await registrarAuditoria(tx, actor, {
+      accion: "FIESTA_EDITADA",
+      entidad: "fiestas",
+      entidadId: fiestaId,
+      antes: { nombre: fiesta.nombre, fechaHora: fiesta.fechaHora.toISOString(), lugar: fiesta.lugar, tipos: actuales.map((a) => ({ id: a.id, nombre: a.nombre, precioCentavos: a.precioCentavos.toString() })) },
+      despues: { nombre: datos.nombre, fechaHora: datos.fechaHora.toISOString(), lugar: datos.lugar ?? null, tipos: datos.tipos.map((t) => ({ id: t.id ?? null, nombre: t.nombre, precioCentavos: t.precioCentavos.toString() })) },
+    });
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Tandas (opcionales): el dueño agrega o quita precios por fecha
 // ---------------------------------------------------------------------------

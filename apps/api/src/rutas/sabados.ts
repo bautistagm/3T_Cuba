@@ -4,7 +4,7 @@ import { z } from "zod";
 import { adelantar, anularMovimientoCocina, cerrarCocina, cocinaDelSabado, cocinaPorToken, crearCocina, gastoDeCocina, regenerarLink, resumenCocina } from "../cocina/cocina.js";
 import type { BaseDeDatos } from "../db/cliente.js";
 import { admins, sabados } from "../db/esquema.js";
-import { anularGasto, CATEGORIAS, eliminarGasto } from "../gastos/gastos.js";
+import { anularGasto, CATEGORIAS, editarGasto, eliminarGasto } from "../gastos/gastos.js";
 import { antesDeEliminarSabado, eliminarSabado, eliminarSabadoSchema } from "../sabados/eliminar.js";
 import { sabadoCorrespondiente } from "../sabados/fechas.js";
 import { ticketsDeCocina } from "../tickets/tickets.js";
@@ -183,6 +183,11 @@ export function rutasSabados(api: FastifyInstance, db: BaseDeDatos) {
   api.post("/sabados/:id/eliminar", async (peticion) => {
     await eliminarSabado(db, actorDe(peticion), idSchema.parse(peticion.params).id, eliminarSabadoSchema.parse(peticion.body ?? {}));
     return { ok: true };
+  });
+
+  api.put("/gastos/:id", async (peticion) => {
+    const nuevo = await editarGasto(db, actorDe(peticion), idSchema.parse(peticion.params).id, (peticion.body ?? {}) as never);
+    return { id: nuevo.id };
   });
 
   api.post("/gastos/:id/eliminar", async (peticion) => {

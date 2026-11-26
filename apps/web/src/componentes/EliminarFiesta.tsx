@@ -13,6 +13,14 @@ export function BotonEliminar(props: { etiqueta: string; alTocar: () => void }) 
   );
 }
 
+/** El lápiz chiquito para editar (solo el dueño). */
+export function BotonEditar(props: { etiqueta: string; alTocar: () => void }) {
+  return (
+    <button type="button" className="boton-x boton-lapiz" aria-label={props.etiqueta} title={props.etiqueta}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); props.alTocar(); }}>✏️</button>
+  );
+}
+
 export function EliminarFiesta(props: { fiestaId: string; alCerrar: () => void; alEliminar: (nombre: string) => void }) {
   const [info, setInfo] = useState<{ nombre: string; entradas: number; pagos: number; totalCentavos: string } | null>(null);
   const [destino, setDestino] = useState<"DEVUELTA" | "QUEDA" | null>(null);

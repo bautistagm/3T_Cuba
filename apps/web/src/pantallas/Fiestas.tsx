@@ -3,9 +3,9 @@ import { Link, useNavigate, useParams } from "react-router";
 import { formatearDni } from "@3t/shared";
 import { api, type DetalleFiesta, type FiestaListada } from "../api";
 import { Encabezado, mensajeDe, useAviso } from "../componentes/comunes";
-import { BotonEliminar, EliminarFiesta } from "../componentes/EliminarFiesta";
+import { BotonEditar, BotonEliminar, EliminarFiesta } from "../componentes/EliminarFiesta";
 import { GraficosFiesta } from "../componentes/GraficosFiesta";
-import { leerMonto, pesos } from "../plata";
+import { leerMonto, montoParaEditar, pesos } from "../plata";
 import { useAdmin } from "../sesion";
 
 const fechaFiesta = (iso: string) =>
@@ -17,6 +17,7 @@ export function PantallaFiestas() {
   const [fiestas, setFiestas] = useState<FiestaListada[] | null>(null);
   const [creando, setCreando] = useState(false);
   const [eliminando, setEliminando] = useState<string | null>(null);
+  const [editando, setEditando] = useState<DetalleFiesta | null>(null);
   const { setAviso, Aviso } = useAviso();
 
   const cargar = useCallback(async () => {
@@ -62,11 +63,24 @@ export function PantallaFiestas() {
                     <span>{fechaFiesta(f.fechaHora)} · {f.vendidas} vendidas{f.pendientes > 0 ? ` · ${f.pendientes} sin pagar` : ""}</span>
                   </Link>
                   <span className={`chip ${f.estado === "A_LA_VENTA" ? "azul" : "gris"}`}>{f.estado === "A_LA_VENTA" ? "A la venta" : "Cerrada"}</span>
-                  {yo.rol === "DUENO" && <BotonEliminar etiqueta={`Eliminar ${f.nombre}`} alTocar={() => setEliminando(f.id)} />}
+                  {yo.rol === "DUENO" && (
+                    <>
+                      <BotonEditar etiqueta={`Editar ${f.nombre}`} alTocar={() => void api.fiesta(f.id).then(setEditando).catch((e: unknown) => setAviso({ tipo: "error", texto: mensajeDe(e) }))} />
+                      <BotonEliminar etiqueta={`Eliminar ${f.nombre}`} alTocar={() => setEliminando(f.id)} />
+                    </>
+                  )}
                 </li>
               ))}
             </ul>
           </section>
+        )}
+        {editando && (
+          <div className="capa" role="dialog" aria-modal="true">
+            <div className="ventana">
+              <FormFiesta editar={editando} alCancelar={() => setEditando(null)}
+                alCrear={async (nombre) => { setEditando(null); setAviso({ tipo: "ok", texto: `${nombre}: cambios guardados.` }); await cargar(); }} />
+            </div>
+          </div>
         )}
         {eliminando && (
           <EliminarFiesta fiestaId={eliminando} alCerrar={() => setEliminando(null)}
@@ -77,29 +91,44 @@ export function PantallaFiestas() {
   );
 }
 
-function FormFiesta(props: { alCancelar: () => void; alCrear: (nombre: string) => Promise<void> }) {
-  const [nombre, setNombre] = useState("");
-  const [fecha, setFecha] = useState("");
-  const [hora, setHora] = useState("23:00");
-  const [lugar, setLugar] = useState("");
-  const [tipos, setTipos] = useState([{ nombre: "Mujer", precio: "" }, { nombre: "Hombre", precio: "" }]);
+const partesFecha = (iso: string) => {
+  const d = new Date(iso);
+  const f = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(d);
+  const v = (t: string) => f.find((x) => x.type === t)?.value ?? "";
+  return { fecha: `${v("year")}-${v("month")}-${v("day")}`, hora: `${v("hour")}:${v("minute")}` };
+};
+
+/** Crear una fiesta, o editarla si viene `editar` (solo el dueño). */
+function FormFiesta(props: { editar?: DetalleFiesta; alCancelar: () => void; alCrear: (nombre: string) => Promise<void> }) {
+  const e0 = props.editar;
+  const inicio = e0 ? partesFecha(e0.fiesta.fechaHora) : null;
+  const [nombre, setNombre] = useState(e0?.fiesta.nombre ?? "");
+  const [fecha, setFecha] = useState(inicio?.fecha ?? "");
+  const [hora, setHora] = useState(inicio?.hora ?? "23:00");
+  const [lugar, setLugar] = useState(e0?.fiesta.lugar ?? "");
+  const [tipos, setTipos] = useState<{ id?: string; nombre: string; precio: string }[]>(
+    e0 ? e0.tipos.map((t) => ({ id: t.id, nombre: t.nombre, precio: montoParaEditar(t.precioCentavos) })) : [{ nombre: "Mujer", precio: "" }, { nombre: "Hombre", precio: "" }],
+  );
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
 
   async function enviar(evento: FormEvent) {
     evento.preventDefault();
     setError(null);
-    const precios = tipos.map((t) => ({ nombre: t.nombre, monto: leerMonto(t.precio) }));
+    if (tipos.some((t) => !t.nombre.trim())) return setError("Cada tipo de entrada necesita un nombre.");
+    const precios = tipos.map((t) => ({ ...t, monto: leerMonto(t.precio) }));
     const malo = precios.find((p) => !p.monto.ok);
     if (malo && !malo.monto.ok) return setError(`Precio ${malo.nombre}: ${malo.monto.error}`);
     setGuardando(true);
     try {
-      await api.crearFiesta({
+      const datos = {
         nombre,
         fechaHora: new Date(`${fecha}T${hora}:00-03:00`).toISOString(),
         ...(lugar.trim() ? { lugar } : {}),
-        tipos: precios.map((p) => ({ nombre: p.nombre, precioCentavos: p.monto.ok ? p.monto.centavos : "0" })),
-      });
+        tipos: precios.map((p) => ({ ...(p.id ? { id: p.id } : {}), nombre: p.nombre.trim(), precioCentavos: p.monto.ok ? p.monto.centavos : "0" })),
+      };
+      if (e0) await api.editarFiesta(e0.fiesta.id, datos);
+      else await api.crearFiesta(datos);
       await props.alCrear(nombre);
     } catch (e) {
       setError(mensajeDe(e));
@@ -109,7 +138,7 @@ function FormFiesta(props: { alCancelar: () => void; alCrear: (nombre: string) =
 
   return (
     <form className="tarjeta" onSubmit={enviar}>
-      <h2>Nueva fiesta</h2>
+      <h2>{e0 ? "Editar fiesta" : "Nueva fiesta"}</h2>
       <label className="campo">Nombre o motivo<input required value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Fiesta de fin de año" /></label>
       <div className="fila-campos">
         <label className="campo">Día<input type="date" required value={fecha} onChange={(e) => setFecha(e.target.value)} /></label>
@@ -117,15 +146,23 @@ function FormFiesta(props: { alCancelar: () => void; alCrear: (nombre: string) =
       </div>
       <label className="campo">Lugar (opcional)<input value={lugar} onChange={(e) => setLugar(e.target.value)} /></label>
       {tipos.map((t, i) => (
-        <label className="campo" key={t.nombre}>
-          Precio entrada {t.nombre}
-          <input inputMode="decimal" required value={t.precio} placeholder="Ej: 15.000"
-            onChange={(e) => setTipos(tipos.map((x, j) => (j === i ? { ...x, precio: e.target.value } : x)))} />
-        </label>
+        <div className="fila-campos fila-tipo" key={t.id ?? `nuevo-${i}`}>
+          {e0 ? (
+            <label className="campo">Tipo<input required maxLength={30} value={t.nombre} onChange={(e) => setTipos(tipos.map((x, j) => (j === i ? { ...x, nombre: e.target.value } : x)))} /></label>
+          ) : null}
+          <label className="campo">
+            {e0 ? "Precio final" : `Precio entrada ${t.nombre}`}
+            <input inputMode="decimal" required value={t.precio} placeholder="Ej: 15.000"
+              onChange={(e) => setTipos(tipos.map((x, j) => (j === i ? { ...x, precio: e.target.value } : x)))} />
+          </label>
+        </div>
       ))}
-      <p className="ayuda">Sin cupo: se venden todas las que se paguen. Cada tipo tiene su link de venta.</p>
+      {e0 && tipos.length < 6 && (
+        <button type="button" className="enlace" onClick={() => setTipos([...tipos, { nombre: "", precio: "" }])}>+ Agregar otro tipo de entrada</button>
+      )}
+      <p className="ayuda">{e0 ? "Un precio nuevo vale para las compras que se carguen desde ahora; las ya cargadas mantienen el suyo." : "Sin cupo: se venden todas las que se paguen. Cada tipo tiene su link de venta."}</p>
       {error && <p className="aviso error" role="alert">{error}</p>}
-      <button className="boton principal" type="submit" disabled={guardando}>{guardando ? "Creando…" : "Crear fiesta"}</button>
+      <button className="boton principal" type="submit" disabled={guardando}>{guardando ? "Guardando…" : e0 ? "Guardar cambios" : "Crear fiesta"}</button>
       <button className="boton secundario" type="button" onClick={props.alCancelar}>Cancelar</button>
     </form>
   );
@@ -146,6 +183,7 @@ export function PantallaFiesta() {
   const [tipoVisto, setTipoVisto] = useState<string | null>(null);
   const [copiado, setCopiado] = useState<string | null>(null);
   const [eliminando, setEliminando] = useState(false);
+  const [editando, setEditando] = useState(false);
   const irA = useNavigate();
   const { setAviso, Aviso } = useAviso();
 
@@ -186,7 +224,12 @@ export function PantallaFiesta() {
       <main className="contenido">
         <Aviso />
         <section className="tarjeta">
-          {esDueno && <span className="esquina"><BotonEliminar etiqueta="Eliminar fiesta" alTocar={() => setEliminando(true)} /></span>}
+          {esDueno && (
+            <span className="esquina">
+              <BotonEditar etiqueta="Editar fiesta" alTocar={() => setEditando(true)} />
+              <BotonEliminar etiqueta="Eliminar fiesta" alTocar={() => setEliminando(true)} />
+            </span>
+          )}
           <p className="ayuda">{fechaFiesta(d.fiesta.fechaHora)}{d.fiesta.lugar ? ` · ${d.fiesta.lugar}` : ""}</p>
           <div className="numeros">
             {d.tipos.map((t) => (
@@ -209,6 +252,14 @@ export function PantallaFiesta() {
 
         <GraficosFiesta d={d} />
 
+        {editando && (
+          <div className="capa" role="dialog" aria-modal="true">
+            <div className="ventana">
+              <FormFiesta editar={d} alCancelar={() => setEditando(false)}
+                alCrear={async () => { setEditando(false); setAviso({ tipo: "ok", texto: "Cambios guardados." }); await cargar(); }} />
+            </div>
+          </div>
+        )}
         {eliminando && (
           <EliminarFiesta fiestaId={d.fiesta.id} alCerrar={() => setEliminando(false)} alEliminar={() => void irA("/fiestas")} />
         )}

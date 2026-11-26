@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { BaseDeDatos } from "../db/cliente.js";
 import {
   agregarTanda,
+  editarFiesta,
   anularCompraPendiente,
   quitarTanda,
   tandaSchema,
@@ -72,6 +73,11 @@ export function rutasFiestas(
     const { abierta } = z.object({ abierta: z.boolean() }).parse(peticion.body);
     const f = await cambiarEstadoVenta(db, actorDe(peticion), idSchema.parse(peticion.params).id, abierta);
     return { estado: f.estado };
+  });
+
+  api.put("/fiestas/:id", async (peticion) => {
+    await editarFiesta(db, actorDe(peticion), idSchema.parse(peticion.params).id, (peticion.body ?? {}) as never);
+    return { ok: true };
   });
 
   api.get("/fiestas/:id/eliminar", async (peticion) => antesDeEliminarFiesta(db, actorDe(peticion), idSchema.parse(peticion.params).id));

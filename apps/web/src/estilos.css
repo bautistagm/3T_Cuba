@@ -367,3 +367,8 @@ input[type="search"] { width: 100%; }
 .boton-eliminar-texto { border: none; background: transparent; color: #8a938c; font: inherit; font-size: 14px; padding: 8px; cursor: pointer; align-self: center; }
 .boton-eliminar-texto span { font-size: 20px; vertical-align: -2px; margin-right: 4px; }
 .boton-eliminar-texto:hover { color: var(--texto); }
+.boton-lapiz { font-size: 15px; filter: grayscale(1); opacity: 0.7; }
+.boton-lapiz:hover { opacity: 1; }
+.esquina { display: flex; gap: 2px; }
+.fila-tipo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.fila-tipo .campo, .fila-tipo input { min-width: 0; }
