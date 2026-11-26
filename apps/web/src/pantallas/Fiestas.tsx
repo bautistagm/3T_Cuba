@@ -253,6 +253,8 @@ export function PantallaFiesta() {
           )}
         </section>
 
+        <CobrosPuerta d={d} esDueno={esDueno} hacer={hacer} />
+
         <GraficosFiesta d={d} />
 
         {editandoEntrada && (
@@ -493,6 +495,52 @@ function PreciosYTandas(props: { tipos: DetalleFiesta["tipos"]; hacer: (accion: 
           )}
         </div>
       ))}
+    </section>
+  );
+}
+
+/** Lo que se cobró en efectivo en la puerta, quién lo tiene y "Recibí" para pasarlo al efectivo de un admin. */
+function CobrosPuerta(props: { d: DetalleFiesta; esDueno: boolean; hacer: (accion: () => Promise<unknown>, texto: string) => Promise<void> }) {
+  const { puerta, tipos } = props.d;
+  if (puerta.ventas.length === 0) return null;
+  const total = puerta.ventas.reduce((s, v) => s + BigInt(v.montoCentavos), 0n);
+  const personas = puerta.ventas.reduce((s, v) => s + v.cantidad, 0);
+  const nombreTipo = (id: string) => tipos.find((t) => t.id === id)?.nombre ?? "";
+  return (
+    <section className="tarjeta">
+      <h2>Cobros en la puerta</h2>
+      <p className="ayuda">{personas} {personas === 1 ? "persona pagó" : "personas pagaron"} en la puerta: {pesos(total)} en efectivo.</p>
+      {puerta.aRendir.length > 0 ? (
+        <ul className="lista">
+          {puerta.aRendir.map((p) => (
+            <li key={p.nombre}>
+              <span className="datos"><strong>{p.nombre} tiene {pesos(p.centavos)}</strong><span>{p.cobros} {p.cobros === 1 ? "cobro" : "cobros"} sin entregar</span></span>
+              <button type="button" className="boton principal chico"
+                onClick={() => window.confirm(`¿${p.nombre} te dio ${pesos(p.centavos)}? Pasa a tu efectivo.`) && void props.hacer(() => api.recibirPlataPuerta(props.d.fiesta.id, p.nombre), `Recibiste ${pesos(p.centavos)} de ${p.nombre}.`)}>
+                Recibí
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="aviso ok">Ya se entregó toda la plata de la puerta.</p>
+      )}
+      <details>
+        <summary className="ayuda">Ver cada cobro</summary>
+        <ul className="lista">
+          {puerta.ventas.map((v) => (
+            <li key={v.id}>
+              <span className="datos">
+                <strong>{v.cantidad} {nombreTipo(v.tipoId)} · {pesos(v.montoCentavos)}</strong>
+                <span>{fechaFiesta(v.cobradoEn)} · cobró {v.cobradoPor}{v.estado === "RENDIDA" ? " · entregado" : ""}</span>
+              </span>
+              {props.esDueno && v.estado === "A_RENDIR" && (
+                <BotonEliminar etiqueta="Eliminar este cobro" alTocar={() => window.confirm(`¿Eliminar este cobro de ${pesos(v.montoCentavos)}? Se borra como si no se hubiera cobrado.`) && void props.hacer(() => api.eliminarVentaPuerta(v.id), "Cobro eliminado.")} />
+              )}
+            </li>
+          ))}
+        </ul>
+      </details>
     </section>
   );
 }

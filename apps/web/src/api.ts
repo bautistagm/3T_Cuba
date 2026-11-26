@@ -186,6 +186,7 @@ export interface EstadoCaja {
   cuentaCentavos: string;
   efectivo: { adminId: string; nombre: string; centavos: string }[];
   camadas: { cocinaId: string; camada: string; fecha: string; centavos: string }[];
+  puertas?: { fiestaId: string; fiesta: string; centavos: string }[];
   miEfectivoCentavos: string;
   ultimoControl: { declaradoCentavos: string; libroCentavos: string; diferenciaCentavos: string; creadoEn: string; ajusteAsientoId: string | null } | null;
   traspasosPendientes: Traspaso[];
@@ -322,6 +323,10 @@ export interface FiestaListada {
 }
 export interface DetalleFiesta {
   fiesta: { id: string; nombre: string; fechaHora: string; lugar: string | null; estado: "A_LA_VENTA" | "VENTA_CERRADA"; tokenPuerta: string | null };
+  puerta: {
+    ventas: { id: string; tipoId: string; cantidad: number; montoCentavos: string; cobradoPor: string; cobradoEn: string; estado: "A_RENDIR" | "RENDIDA"; rendidaEn: string | null }[];
+    aRendir: { nombre: string; centavos: string; cobros: number }[];
+  };
   tipos: {
     id: string;
     nombre: string;
@@ -439,7 +444,10 @@ export const api = {
     pedir<{ ok: true }>("PUT", `/fiestas/${id}`, datos),
   editarGasto: (id: string, datos: { proveedor?: string; items: { descripcion: string; cantidad?: string; categoria: Categoria; subtotalCentavos: string }[] }) =>
     pedir<{ id: string }>("PUT", `/gastos/${id}`, datos),
-  antesDeEliminarFiesta: (id: string) => pedir<{ nombre: string; entradas: number; pagos: number; totalCentavos: string }>("GET", `/fiestas/${id}/eliminar`),
+  antesDeEliminarFiesta: (id: string) =>
+    pedir<{ nombre: string; entradas: number; pagos: number; totalCentavos: string; puertaSinEntregar: string[] }>("GET", `/fiestas/${id}/eliminar`),
+  recibirPlataPuerta: (fiestaId: string, nombre: string) => pedir<{ centavos: string }>("POST", `/fiestas/${fiestaId}/puerta/recibir`, { nombre }),
+  eliminarVentaPuerta: (id: string) => pedir<{ ok: true }>("POST", `/ventas-puerta/${id}/eliminar`),
   eliminarFiesta: (id: string, plata?: { destino: "DEVUELTA" } | { destino: "QUEDA"; concepto: string }) =>
     pedir<{ ok: true }>("POST", `/fiestas/${id}/eliminar`, plata ? { plata } : {}),
   agregarTanda: (tipoId: string, datos: { precioCentavos: string; hasta: string }) => pedir<{ id: string }>("POST", `/tipos-entrada/${tipoId}/tandas`, datos),

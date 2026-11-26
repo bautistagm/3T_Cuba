@@ -67,13 +67,16 @@ export function GraficosFiesta(props: { d: DetalleFiesta }) {
   const { d } = props;
   const pagadas = d.entradas.filter((e) => e.estado === "VALIDA" || e.estado === "USADA");
   const usadas = d.entradas.filter((e) => e.estado === "USADA" && e.usadaEn);
-  if (pagadas.length === 0) return null;
+  const enPuerta = d.puerta.ventas.reduce((s, v) => s + v.cantidad, 0);
+  if (pagadas.length === 0 && enPuerta === 0) return null;
 
   // 1) A qué hora entró la gente: de a 15 minutos.
   let ingresos: Barra[] = [];
   let pico: Barra | null = null;
-  if (usadas.length > 0) {
-    const tiempos = usadas.map((e) => new Date(e.usadaEn as string).getTime());
+  // Los que pagaron en la puerta también entraron en ese momento.
+  const tiemposPuerta = d.puerta.ventas.flatMap((v) => Array.from({ length: v.cantidad }, () => new Date(v.cobradoEn).getTime()));
+  if (usadas.length > 0 || tiemposPuerta.length > 0) {
+    const tiempos = [...usadas.map((e) => new Date(e.usadaEn as string).getTime()), ...tiemposPuerta];
     const cuarto = 15 * 60_000;
     const desde = Math.floor(Math.min(...tiempos) / cuarto) * cuarto;
     const hasta = Math.floor(Math.max(...tiempos) / cuarto) * cuarto;
@@ -105,16 +108,18 @@ export function GraficosFiesta(props: { d: DetalleFiesta }) {
   // 3) Quiénes: por tipo, cuántas se vendieron y cuántos vinieron.
   const porTipo = d.tipos.map((t) => {
     const suyas = pagadas.filter((e) => e.tipoId === t.id);
-    return { nombre: t.nombre, vendidas: suyas.length, vinieron: suyas.filter((e) => e.estado === "USADA").length };
+    const puerta = d.puerta.ventas.filter((v) => v.tipoId === t.id).reduce((s, v) => s + v.cantidad, 0);
+    return { nombre: t.nombre, vendidas: suyas.length + puerta, vinieron: suyas.filter((e) => e.estado === "USADA").length + puerta, puerta };
   });
-  const vinieron = pagadas.filter((e) => e.estado === "USADA").length;
+  const vinieron = pagadas.filter((e) => e.estado === "USADA").length + enPuerta;
+  const totalGente = pagadas.length + enPuerta;
 
   return (
     <section className="tarjeta">
       <h2>Números de la fiesta</h2>
       <div className="numeros">
-        <span><span className="ayuda">Vinieron</span><strong>{vinieron} de {pagadas.length}</strong></span>
-        <span><span className="ayuda">Asistencia</span><strong>{Math.round((vinieron / pagadas.length) * 100)}%</strong></span>
+        <span><span className="ayuda">Vinieron</span><strong>{vinieron} de {totalGente}</strong></span>
+        <span><span className="ayuda">Asistencia</span><strong>{Math.round((vinieron / Math.max(1, totalGente)) * 100)}%</strong></span>
         {pico && pico.valor > 0 && <span><span className="ayuda">Hora pico</span><strong>{pico.etiqueta}</strong></span>}
       </div>
 
@@ -124,10 +129,10 @@ export function GraficosFiesta(props: { d: DetalleFiesta }) {
           <li key={t.nombre}>
             <span className="datos">
               <strong>{t.nombre}</strong>
-              <span>{t.vendidas} vendidas · {t.vinieron} vinieron{t.vendidas ? ` (${Math.round((t.vinieron / t.vendidas) * 100)}%)` : ""}</span>
+              <span>{t.vendidas} vendidas{t.puerta ? ` (${t.puerta} en la puerta)` : ""} · {t.vinieron} vinieron{t.vendidas ? ` (${Math.round((t.vinieron / t.vendidas) * 100)}%)` : ""}</span>
             </span>
             <span className="barra-horizontal" aria-hidden="true">
-              <span style={{ width: `${pagadas.length ? (t.vendidas / pagadas.length) * 100 : 0}%` }} />
+              <span style={{ width: `${totalGente ? (t.vendidas / totalGente) * 100 : 0}%` }} />
             </span>
           </li>
         ))}

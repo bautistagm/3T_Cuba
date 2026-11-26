@@ -86,6 +86,12 @@ function PanelPlata() {
               <strong>{pesos(c.centavos)}</strong>
             </li>
           ))}
+          {(caja.puertas ?? []).map((p) => (
+            <li key={p.fiestaId}>
+              <Link to={`/fiestas/${p.fiestaId}`} className="link-claro">Efectivo de la puerta ({p.fiesta})</Link>
+              <strong>{pesos(p.centavos)}</strong>
+            </li>
+          ))}
         </ul>
       </section>
 

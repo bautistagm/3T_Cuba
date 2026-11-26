@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useParams } from "react-router";
 import { formatearDni } from "@3t/shared";
+import { leerMonto, pesos } from "../plata";
 
 type EstadoEntrada = "VALIDA" | "USADA" | "ANULADA";
 interface EntradaPuerta {
@@ -20,7 +21,25 @@ interface EntradaPuerta {
   usadaEn: string | null;
   usadaPor: string | null;
 }
+interface CobroPuerta {
+  id: string;
+  tipoId: string;
+  cantidad: number;
+  montoCentavos: string;
+  por: string;
+  entregado: boolean;
+}
+interface VentaPendiente {
+  id: string;
+  tipoId: string;
+  cantidad: number;
+  montoCentavos: string;
+  por: string;
+  en: string;
+}
 interface ListaPuerta {
+  /** Puede faltar en una lista guardada por una versión vieja de la app. */
+  cobrosPuerta?: CobroPuerta[];
   fiesta: { nombre: string; fechaHora: string; lugar: string | null };
   tipos: { id: string; nombre: string }[];
   entradas: EntradaPuerta[];
@@ -110,10 +129,14 @@ export function PaginaPuerta() {
   const claveCola = `3t-puerta-cola-${token}`;
   const [lista, setLista] = useState<ListaPuerta | null>(() => guardado.leer<ListaPuerta>(claveLista));
   const [cola, setCola] = useState<Ingreso[]>(() => guardado.leer<Ingreso[]>(claveCola) ?? []);
+  const claveVentas = `3t-puerta-ventas-${token}`;
+  const [ventasSinMandar, setVentasSinMandar] = useState<VentaPendiente[]>(() => guardado.leer<VentaPendiente[]>(claveVentas) ?? []);
+  const ventasRef = useRef(ventasSinMandar);
+  ventasRef.current = ventasSinMandar;
   const [nombre, setNombre] = useState(() => guardado.leer<string>("3t-puerta-nombre") ?? "");
   const [linkMalo, setLinkMalo] = useState<string | null>(null);
   const [conSenal, setConSenal] = useState(true);
-  const [modo, setModo] = useState<"camara" | "buscar">("camara");
+  const [modo, setModo] = useState<"camara" | "buscar" | "cobrar">("camara");
   const [pantallazo, setPantallazo] = useState<Pantallazo | null>(null);
   const colaRef = useRef(cola);
   colaRef.current = cola;
@@ -183,16 +206,53 @@ export function PaginaPuerta() {
     }
   }, [token, marcarLocal, guardarCola]);
 
+  const guardarVentas = useCallback(
+    (nuevas: VentaPendiente[]) => {
+      ventasRef.current = nuevas;
+      setVentasSinMandar(nuevas);
+      guardado.escribir(claveVentas, nuevas);
+    },
+    [claveVentas],
+  );
+
+  /** Manda los cobros en efectivo que quedaron guardados en el celular. */
+  const mandandoVentas = useRef(false);
+  const mandarVentas = useCallback(async () => {
+    const pendientes = ventasRef.current;
+    if (pendientes.length === 0 || mandandoVentas.current) return true;
+    mandandoVentas.current = true;
+    try {
+      const r = await pedirPuerta<{ listos: string[] }>(`${token}/ventas`, { ventas: pendientes.slice(0, 100) }, 6000);
+      const listos = new Set(r.listos);
+      // Primero se baja la lista nueva (que ya los trae) y recién ahí se sacan de la cola, así no "desaparecen" un instante.
+      await bajarLista();
+      guardarVentas(ventasRef.current.filter((v) => !listos.has(v.id)));
+      setConSenal(true);
+      return true;
+    } catch (e) {
+      if (e instanceof SinSenal) setConSenal(false);
+      return false;
+    } finally {
+      mandandoVentas.current = false;
+    }
+  }, [token, guardarVentas, bajarLista]);
+
+  const sincronizar = useCallback(async () => {
+    await mandarCola();
+    await mandarVentas();
+    await bajarLista();
+  }, [mandarCola, mandarVentas, bajarLista]);
+
   useEffect(() => {
-    void bajarLista().then(mandarCola);
-    const cada = window.setInterval(() => void mandarCola().then(bajarLista), 30_000);
-    const alVolver = () => void mandarCola().then(bajarLista);
+    void sincronizar();
+    const cada = window.setInterval(() => void sincronizar(), 30_000);
+    const alVolver = () => void sincronizar();
     window.addEventListener("online", alVolver);
     return () => {
       window.clearInterval(cada);
       window.removeEventListener("online", alVolver);
     };
-  }, [bajarLista, mandarCola]);
+  }, [sincronizar]);
 
   const tipoDe = useCallback((tipoId: string) => lista?.tipos.find((t) => t.id === tipoId)?.nombre ?? "", [lista]);
 
@@ -255,30 +315,43 @@ export function PaginaPuerta() {
   if (!lista) return <main className="contenido"><div className="cargando" /><p className="ayuda">Bajando la lista…</p></main>;
 
   const pagas = lista.entradas.filter((e) => e.estado !== "ANULADA");
-  const entraron = pagas.filter((e) => e.estado === "USADA").length;
+  const enPuerta = (lista.cobrosPuerta ?? []).reduce((s, v) => s + v.cantidad, 0) + ventasSinMandar.filter((v) => !(lista.cobrosPuerta ?? []).some((c) => c.id === v.id)).reduce((s, v) => s + v.cantidad, 0);
+  const entraron = pagas.filter((e) => e.estado === "USADA").length + enPuerta;
+  const totalGente = pagas.length + enPuerta;
 
   return (
     <div className="puerta">
       <header className="puerta-cabecera">
         <div>
           <strong>{lista.fiesta.nombre}</strong>
-          <span>Entraron {entraron} de {pagas.length} · marcás como {nombre}{" "}
+          <span>Entraron {entraron} de {totalGente} · marcás como {nombre}{" "}
             <button type="button" className="enlace claro" onClick={() => { guardado.escribir("3t-puerta-nombre", ""); setNombre(""); }}>cambiar</button>
           </span>
         </div>
         <span className={`senal ${conSenal ? "si" : "no"}`}>
-          {conSenal ? "Con señal" : "Sin señal"}{cola.length > 0 ? ` · ${cola.length} sin mandar` : ""}
+          {conSenal ? "Con señal" : "Sin señal"}{cola.length + ventasSinMandar.length > 0 ? ` · ${cola.length + ventasSinMandar.length} sin mandar` : ""}
         </span>
       </header>
       {linkMalo && <p className="aviso error" role="alert">{linkMalo}</p>}
       <div className="segmentado" role="tablist" aria-label="Cómo controlar">
         <button type="button" role="tab" aria-selected={modo === "camara"} className={modo === "camara" ? "activo" : ""} onClick={() => setModo("camara")}>Escanear QR</button>
         <button type="button" role="tab" aria-selected={modo === "buscar"} className={modo === "buscar" ? "activo" : ""} onClick={() => setModo("buscar")}>Buscar a mano</button>
+        <button type="button" role="tab" aria-selected={modo === "cobrar"} className={modo === "cobrar" ? "activo" : ""} onClick={() => setModo("cobrar")}>Cobrar en efectivo</button>
       </div>
-      {modo === "camara" ? (
-        <Camara pausada={pantallazo !== null} alLeer={(texto) => void ingresar({ codigo: texto })} />
-      ) : (
-        <Buscar lista={lista} tipoDe={tipoDe} alDejarPasar={(id) => void ingresar({ entradaId: id })} />
+      {modo === "camara" && <Camara pausada={pantallazo !== null} alLeer={(texto) => void ingresar({ codigo: texto })} />}
+      {modo === "buscar" && <Buscar lista={lista} tipoDe={tipoDe} alDejarPasar={(id) => void ingresar({ entradaId: id })} />}
+      {modo === "cobrar" && (
+        <CobrarEnPuerta
+          lista={lista}
+          nombre={nombre}
+          sinMandar={ventasSinMandar}
+          alCobrar={(v) => {
+            guardarVentas([...ventasRef.current, v]);
+            const tipo = tipoDe(v.tipoId);
+            setPantallazo({ verde: true, titulo: "Cobrado", nombre: `${v.cantidad} ${tipo}`, detalle: pesos(v.montoCentavos), nota: "La plata queda a tu cargo hasta que se la des a un organizador." });
+            void mandarVentas().then(() => bajarLista());
+          }}
+        />
       )}
       {pantallazo && (
         <button type="button" className={`pantallazo ${pantallazo.verde ? "verde" : "rojo"}`} onClick={() => setPantallazo(null)} aria-live="assertive">
@@ -463,6 +536,60 @@ function Camara(props: { pausada: boolean; alLeer: (texto: string) => void }) {
           <p className="ayuda claro">Apuntá al QR de la entrada.</p>
         </>
       )}
+    </section>
+  );
+}
+
+/** Cobrar en efectivo a alguien que no sacó entrada. La plata queda a cargo de quien cobra. */
+function CobrarEnPuerta(props: { lista: ListaPuerta; nombre: string; sinMandar: VentaPendiente[]; alCobrar: (v: VentaPendiente) => void }) {
+  const [tipoId, setTipoId] = useState(props.lista.tipos[0]?.id ?? "");
+  const [cantidad, setCantidad] = useState(1);
+  const [monto, setMonto] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const mios = (props.lista.cobrosPuerta ?? []).filter((v) => v.por === props.nombre && !v.entregado);
+  const pendientesMios = props.sinMandar.filter((v) => v.por === props.nombre && !(props.lista.cobrosPuerta ?? []).some((c) => c.id === v.id));
+  const tengo = [...mios, ...pendientesMios].reduce((s, v) => s + BigInt(v.montoCentavos), 0n);
+  const personas = [...mios, ...pendientesMios].reduce((s, v) => s + v.cantidad, 0);
+
+  function cobrar(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const m = leerMonto(monto);
+    if (!m.ok) return setError(m.error);
+    const tipo = props.lista.tipos.find((t) => t.id === tipoId);
+    if (!tipo) return setError("Elegí el tipo de entrada.");
+    if (!window.confirm(`¿Cobraste ${pesos(m.centavos)} en efectivo por ${cantidad} ${tipo.nombre}?`)) return;
+    props.alCobrar({ id: crypto.randomUUID(), tipoId, cantidad, montoCentavos: m.centavos, por: props.nombre, en: new Date().toISOString() });
+    setMonto("");
+    setCantidad(1);
+  }
+
+  return (
+    <section className="tarjeta">
+      <h2>Cobrar en efectivo</h2>
+      <p className="ayuda">Para alguien que no sacó entrada y paga acá. La plata queda a tu cargo ({props.nombre}) hasta que se la des a un organizador.</p>
+      <form onSubmit={cobrar}>
+        <label className="campo">
+          Tipo de entrada
+          <select value={tipoId} onChange={(e) => setTipoId(e.target.value)}>
+            {props.lista.tipos.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+          </select>
+        </label>
+        <div className="fila-campos">
+          <label className="campo">
+            Personas
+            <input type="number" inputMode="numeric" min={1} max={50} required value={cantidad} onChange={(e) => setCantidad(Math.max(1, Math.min(50, Number(e.target.value) || 1)))} />
+          </label>
+          <label className="campo">
+            Monto total
+            <input inputMode="decimal" required value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="Ej: 15.000" />
+          </label>
+        </div>
+        {error && <p className="aviso error" role="alert">{error}</p>}
+        <button className="boton principal" type="submit">Cobrar</button>
+      </form>
+      <p className="aviso ok">Tenés a cargo <strong>{pesos(tengo)}</strong> ({personas} {personas === 1 ? "persona" : "personas"}).</p>
     </section>
   );
 }

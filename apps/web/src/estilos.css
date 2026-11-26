@@ -375,3 +375,4 @@ input[type="search"] { width: 100%; }
 .fila-con-acciones { display: flex; align-items: center; gap: 2px; }
 .fila-con-acciones > .fila-jugador { flex: 1; min-width: 0; }
 .iconos { display: inline-flex; align-items: center; gap: 0; }
+.fila-campos > .campo, .fila-campos input, .fila-campos select { min-width: 0; }

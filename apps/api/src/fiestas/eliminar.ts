@@ -12,7 +12,8 @@ import { z } from "zod";
 import { registrarAuditoria } from "../auditoria/auditoria.js";
 import { anularAsiento, registrarAsiento, type ActorAdmin } from "../caja/libro.js";
 import type { BaseDeDatos, Transaccion } from "../db/cliente.js";
-import { comprasEntradas, entradas, fiestas, notificaciones, pagos, tandas, tiposEntrada, transferenciasRecibidas } from "../db/esquema.js";
+import { comprasEntradas, entradas, fiestas, notificaciones, pagos, tandas, tiposEntrada, transferenciasRecibidas, ventasPuerta } from "../db/esquema.js";
+import { codigoEfectivo } from "../caja/cuentas.js";
 import { ErrorNegocio, noExiste, soloDueno } from "../errores.js";
 
 export const eliminarFiestaSchema = z.object({
@@ -39,12 +40,15 @@ export async function antesDeEliminarFiesta(db: BaseDeDatos, actor: ActorAdmin, 
   const [fiesta] = await db.select().from(fiestas).where(eq(fiestas.id, fiestaId)).limit(1);
   if (!fiesta) throw noExiste("La fiesta");
   const conPlata = await pagosDeLaFiesta(db, fiestaId);
+  const puerta = await db.select().from(ventasPuerta).where(eq(ventasPuerta.fiestaId, fiestaId));
   const [entradasCount] = await db.select({ n: sql<number>`count(*)::int` }).from(entradas).where(eq(entradas.fiestaId, fiestaId));
   return {
     nombre: fiesta.nombre,
     entradas: entradasCount?.n ?? 0,
-    pagos: conPlata.length,
-    totalCentavos: conPlata.reduce((s, p) => s + p.montoCentavos, 0n),
+    pagos: conPlata.length + puerta.length,
+    totalCentavos: conPlata.reduce((s, p) => s + p.montoCentavos, 0n) + puerta.reduce((s, v) => s + v.montoCentavos, 0n),
+    /** Quiénes tienen todavía plata de la puerta sin entregar (hay que recibirla antes de eliminar). */
+    puertaSinEntregar: [...new Set(puerta.filter((v) => v.estado === "A_RENDIR").map((v) => v.cobradoPor))],
   };
 }
 
@@ -55,8 +59,13 @@ export async function eliminarFiesta(db: BaseDeDatos, actor: ActorAdmin, fiestaI
     const [fiesta] = await tx.select().from(fiestas).where(eq(fiestas.id, fiestaId)).for("update");
     if (!fiesta) throw noExiste("La fiesta");
     const conPlata = await pagosDeLaFiesta(tx, fiestaId);
-    const total = conPlata.reduce((s, p) => s + p.montoCentavos, 0n);
-    if (conPlata.length > 0 && !datos.plata) {
+    const puerta = await tx.select().from(ventasPuerta).where(eq(ventasPuerta.fiestaId, fiestaId)).for("update");
+    const sinEntregar = [...new Set(puerta.filter((v) => v.estado === "A_RENDIR").map((v) => v.cobradoPor))];
+    if (sinEntregar.length > 0) {
+      throw new ErrorNegocio(409, "PUERTA_SIN_ENTREGAR", `Primero recibí la plata de la puerta que tiene ${sinEntregar.join(", ")}.`);
+    }
+    const total = conPlata.reduce((s, p) => s + p.montoCentavos, 0n) + puerta.reduce((s, v) => s + v.montoCentavos, 0n);
+    if ((conPlata.length > 0 || puerta.length > 0) && !datos.plata) {
       throw new ErrorNegocio(409, "FIESTA_CON_PLATA", "Esta fiesta tiene plata cobrada: elegí si la devolviste o si queda en la caja.");
     }
 
@@ -95,12 +104,26 @@ export async function eliminarFiesta(db: BaseDeDatos, actor: ActorAdmin, fiestaI
       }
     }
 
+    // La plata cobrada en la puerta ya la tiene un admin: se devuelve desde su efectivo o pasa a otro ingreso.
+    for (const v of puerta) {
+      const queda = datos.plata?.destino === "QUEDA";
+      await registrarAsiento(tx, actor, {
+        fecha: new Date(),
+        descripcion: queda ? `Otro ingreso: ${datos.plata?.destino === "QUEDA" ? datos.plata.concepto : ""} (puerta ${fiesta.nombre})`.slice(0, 200) : `Devolución de la puerta (${fiesta.nombre})`.slice(0, 200),
+        origen: "AJUSTE",
+        lineas: queda
+          ? [{ cuentaCodigo: "INGRESO:FIESTAS", montoCentavos: v.montoCentavos }, { cuentaCodigo: "INGRESO:OTROS", montoCentavos: -v.montoCentavos }]
+          : [{ cuentaCodigo: "INGRESO:FIESTAS", montoCentavos: v.montoCentavos }, { cuentaCodigo: codigoEfectivo(v.rendidaAAdminId ?? ""), montoCentavos: -v.montoCentavos }],
+      });
+    }
+
     // Borrado completo (la base solo lo permite dentro de esta operación).
     await tx.execute(sql`select set_config('app.eliminando_fiesta', ${fiestaId}, true)`);
     const compras = await tx.select({ id: comprasEntradas.id }).from(comprasEntradas).where(eq(comprasEntradas.fiestaId, fiestaId));
     const tipos = await tx.select({ id: tiposEntrada.id }).from(tiposEntrada).where(eq(tiposEntrada.fiestaId, fiestaId));
     const [cantidad] = await tx.select({ n: sql<number>`count(*)::int` }).from(entradas).where(eq(entradas.fiestaId, fiestaId));
     await tx.delete(entradas).where(eq(entradas.fiestaId, fiestaId));
+    await tx.delete(ventasPuerta).where(eq(ventasPuerta.fiestaId, fiestaId));
     if (compras.length) await tx.delete(notificaciones).where(inArray(notificaciones.compraId, compras.map((c) => c.id)));
     await tx.delete(comprasEntradas).where(eq(comprasEntradas.fiestaId, fiestaId));
     if (tipos.length) await tx.delete(tandas).where(inArray(tandas.tipoId, tipos.map((t) => t.id)));

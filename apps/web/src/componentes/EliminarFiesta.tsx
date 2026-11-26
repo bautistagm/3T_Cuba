@@ -22,7 +22,7 @@ export function BotonEditar(props: { etiqueta: string; alTocar: () => void }) {
 }
 
 export function EliminarFiesta(props: { fiestaId: string; alCerrar: () => void; alEliminar: (nombre: string) => void }) {
-  const [info, setInfo] = useState<{ nombre: string; entradas: number; pagos: number; totalCentavos: string } | null>(null);
+  const [info, setInfo] = useState<{ nombre: string; entradas: number; pagos: number; totalCentavos: string; puertaSinEntregar: string[] } | null>(null);
   const [destino, setDestino] = useState<"DEVUELTA" | "QUEDA" | null>(null);
   const [concepto, setConcepto] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +54,9 @@ export function EliminarFiesta(props: { fiestaId: string; alCerrar: () => void; 
       <form className="tarjeta ventana" onSubmit={eliminar}>
         <h2 id="titulo-eliminar">Eliminar {info ? `«${info.nombre}»` : "fiesta"}</h2>
         {!info && !error && <div className="cargando" />}
+        {info && info.puertaSinEntregar.length > 0 && (
+          <p className="aviso error">Todavía hay plata de la puerta sin entregar ({info.puertaSinEntregar.join(", ")}). Primero tocá «Recibí» en la fiesta, así esa plata no queda perdida.</p>
+        )}
         {info && info.pagos === 0 && (
           <p>Se borra todo: la fiesta, sus links y {info.entradas === 0 ? "no tiene entradas" : `${info.entradas} ${info.entradas === 1 ? "entrada sin pagar" : "entradas sin pagar"}`}. No tiene plata cobrada, así que la caja no cambia. <strong>No se puede deshacer.</strong></p>
         )}
@@ -78,7 +81,7 @@ export function EliminarFiesta(props: { fiestaId: string; alCerrar: () => void; 
           </>
         )}
         {error && <p className="aviso error" role="alert">{error}</p>}
-        <button className="boton peligro" type="submit" disabled={!info || borrando}>{borrando ? "Eliminando…" : "Eliminar fiesta"}</button>
+        <button className="boton peligro" type="submit" disabled={!info || borrando || info.puertaSinEntregar.length > 0}>{borrando ? "Eliminando…" : "Eliminar fiesta"}</button>
         <button className="boton secundario" type="button" onClick={props.alCerrar}>Cancelar</button>
       </form>
     </div>

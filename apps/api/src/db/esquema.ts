@@ -841,6 +841,46 @@ export const comprasEntradas = pgTable(
 export const estadoEntrada = pgEnum("estado_entrada", ["PENDIENTE_PAGO", "VALIDA", "USADA", "ANULADA"]);
 
 /**
+ * Cobros en efectivo en la puerta de una fiesta (decisión del dueño, 26/11/2026): alguien que no sacó entrada paga
+ * en la puerta. Quien cobra (con el nombre que puso en el link de la puerta) queda a cargo de esa plata hasta que
+ * se la entrega a un admin, que toca "Recibí" y pasa a su efectivo. El monto lo escribe quien cobra.
+ */
+export const estadoVentaPuerta = pgEnum("estado_venta_puerta", ["A_RENDIR", "RENDIDA"]);
+
+export const ventasPuerta = pgTable(
+  "ventas_puerta",
+  {
+    /** Lo genera el celular de la puerta: si reintenta sin señal, no se cuenta dos veces. */
+    id: uuid().primaryKey(),
+    fiestaId: uuid()
+      .notNull()
+      .references(() => fiestas.id),
+    tipoId: uuid()
+      .notNull()
+      .references(() => tiposEntrada.id),
+    cantidad: integer().notNull(),
+    montoCentavos: bigint({ mode: "bigint" }).notNull(),
+    cobradoPor: text().notNull(),
+    cobradoEn: momento().notNull(),
+    asientoId: uuid()
+      .notNull()
+      .unique()
+      .references(() => asientosCaja.id),
+    estado: estadoVentaPuerta().notNull().default("A_RENDIR"),
+    rendidaEn: momento(),
+    rendidaAAdminId: uuid().references(() => admins.id),
+    rendicionAsientoId: uuid().references(() => asientosCaja.id),
+    ...tiempos,
+  },
+  (t) => [
+    index("ventas_puerta_fiesta").on(t.fiestaId),
+    check("ventas_puerta_cantidad", sql`${t.cantidad} BETWEEN 1 AND 50`),
+    check("ventas_puerta_monto_positivo", sql`${t.montoCentavos} > 0`),
+    check("ventas_puerta_rendida_coherente", sql`(${t.estado} = 'RENDIDA') = (${t.rendidaEn} IS NOT NULL AND ${t.rendidaAAdminId} IS NOT NULL AND ${t.rendicionAsientoId} IS NOT NULL)`),
+  ],
+);
+
+/**
  * Tandas (opcionales, etapa 9.4): precios por fecha para un tipo de entrada. Manda la primera tanda que no terminó;
  * cuando terminan todas, vale el precio del tipo. El precio queda fijo al cargar la compra.
  */
