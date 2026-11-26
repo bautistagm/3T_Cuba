@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { enlaceWhatsApp } from "@3t/shared";
 import { api, type CuotaJugador, type Deudor, type MesCuota } from "../api";
 import { mensajeDe, pedirMotivo, useAviso } from "../componentes/comunes";
-import { leerMonto, pesos } from "../plata";
+import { BotonEditar, BotonEliminar, EliminarConPlata } from "../componentes/EliminarFiesta";
+import { leerMonto, montoParaEditar, pesos } from "../plata";
 import { useAdmin } from "../sesion";
 
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -22,6 +23,8 @@ export function PanelCuotas() {
   const [error, setError] = useState<string | null>(null);
   const [panel, setPanel] = useState<"abrir" | "alias" | null>(null);
   const [abierto, setAbierto] = useState<string | "TODOS" | null>(null);
+  const [editandoMes, setEditandoMes] = useState<MesCuota | null>(null);
+  const [eliminandoMes, setEliminandoMes] = useState<{ mes: MesCuota; pagaron: number; cobradoCentavos: string; cuotas: number } | null>(null);
   const { setAviso, Aviso } = useAviso();
 
   const cargar = useCallback(async () => {
@@ -73,16 +76,25 @@ export function PanelCuotas() {
           <ul className="lista lista-meses">
             {meses.map((m) => (
               <li key={m.id}>
-                <button type="button" className="fila-jugador" aria-expanded={abierto === m.id} onClick={() => setAbierto(abierto === m.id ? null : m.id)}>
-                  <span className="datos">
-                    <strong>{m.nombre} · {pesos(m.montoCentavos)}</strong>
-                    <span>{m.pagaron} pagaron · {m.deben} deben{BigInt(m.faltaCentavos) > 0n ? ` · falta ${pesos(m.faltaCentavos)}` : ""}</span>
-                  </span>
-                  <span aria-hidden="true" className="flecha">{abierto === m.id ? "▴" : "▾"}</span>
-                </button>
+                <div className="fila-con-acciones">
+                  <button type="button" className="fila-jugador" aria-expanded={abierto === m.id} onClick={() => setAbierto(abierto === m.id ? null : m.id)}>
+                    <span className="datos">
+                      <strong>{m.nombre} · {pesos(m.montoCentavos)}</strong>
+                      <span>{m.pagaron} pagaron · {m.deben} deben{BigInt(m.faltaCentavos) > 0n ? ` · falta ${pesos(m.faltaCentavos)}` : ""}</span>
+                    </span>
+                    <span aria-hidden="true" className="flecha">{abierto === m.id ? "▴" : "▾"}</span>
+                  </button>
+                  {esDueno && (
+                    <>
+                      <BotonEditar etiqueta={`Editar ${m.nombre}`} alTocar={() => setEditandoMes(m)} />
+                      <BotonEliminar etiqueta={`Eliminar ${m.nombre}`} alTocar={() => {
+                        api.antesDeEliminarMes(m.id).then((i) => setEliminandoMes({ mes: m, ...i })).catch((e: unknown) => setAviso({ tipo: "error", texto: mensajeDe(e) }));
+                      }} />
+                    </>
+                  )}
+                </div>
                 {abierto === m.id && (
                   <>
-                    {esDueno && m.pagaron === 0 && <CambiarMonto mes={m} alListo={listo} alFallar={(t) => setAviso({ tipo: "error", texto: t })} />}
                     <ListaDeudores periodoId={m.id} />
                   </>
                 )}
@@ -90,6 +102,26 @@ export function PanelCuotas() {
             ))}
           </ul>
         </section>
+      )}
+      {editandoMes && <EditarMes mes={editandoMes} alCerrar={() => setEditandoMes(null)} alListo={async (t) => { setEditandoMes(null); await listo(t); }} />}
+      {eliminandoMes && (
+        <EliminarConPlata
+          titulo={`Eliminar ${eliminandoMes.mes.nombre}`}
+          montoCentavos={eliminandoMes.pagaron === 0 ? null : eliminandoMes.cobradoCentavos}
+          sinPlata={`Se borran las ${eliminandoMes.cuotas} cuotas de ${eliminandoMes.mes.nombre}. Nadie pagó todavía: la caja no cambia.`}
+          pregunta={<>{eliminandoMes.pagaron} {eliminandoMes.pagaron === 1 ? "jugador ya pagó" : "jugadores ya pagaron"} este mes: <strong>{pesos(eliminandoMes.cobradoCentavos)}</strong>. Si un pago cubría también otros meses, esos siguen pagados. ¿Qué pasó con la plata de este mes?</>}
+          opciones={[
+            { valor: "DEVUELTA", titulo: "La devolví", ayuda: "La plata sale de la caja." },
+            { valor: "QUEDA", titulo: "Queda en la caja", ayuda: "Pasa a ser otro ingreso, con el nombre que le pongas.", pideNombre: { etiqueta: "¿Qué ingreso es?", ejemplo: "Ej: Prueba de la app" } },
+          ]}
+          boton="Eliminar mes"
+          alCerrar={() => setEliminandoMes(null)}
+          alConfirmar={async (opcion, nombre) => {
+            await api.eliminarMes(eliminandoMes.mes.id, opcion === null ? undefined : opcion === "QUEDA" ? { destino: "QUEDA", concepto: nombre } : { destino: "DEVUELTA" });
+            setEliminandoMes(null);
+            await listo(`${eliminandoMes.mes.nombre} eliminado.`);
+          }}
+        />
       )}
       {meses && meses.length > 1 && (
         <section className="tarjeta" aria-labelledby="titulo-todos">
@@ -175,20 +207,36 @@ function FormAbrirMes(props: { abiertos: MesCuota[]; alListo: (t: string) => Pro
   );
 }
 
-function CambiarMonto(props: { mes: MesCuota; alListo: (t: string) => Promise<void>; alFallar: (t: string) => void }) {
+function EditarMes(props: { mes: MesCuota; alCerrar: () => void; alListo: (t: string) => Promise<void> }) {
+  const [monto, setMonto] = useState(montoParaEditar(props.mes.montoCentavos));
+  const [nota, setNota] = useState(props.mes.nota ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
+  async function guardar(e: FormEvent) {
+    e.preventDefault();
+    const m = leerMonto(monto);
+    if (!m.ok) return setError(m.error);
+    setGuardando(true);
+    try {
+      const r = await api.editarMes(props.mes.id, { montoCentavos: m.centavos, ...(nota.trim() ? { nota: nota.trim() } : {}) });
+      await props.alListo(`${props.mes.nombre}: ${pesos(m.centavos)}${r.cuotasCambiadas ? ` (${r.cuotasCambiadas} cuotas pendientes actualizadas)` : ""}.`);
+    } catch (x) {
+      setError(mensajeDe(x));
+      setGuardando(false);
+    }
+  }
   return (
-    <button type="button" className="boton secundario chico"
-      onClick={() => {
-        const texto = window.prompt(`Nuevo monto de la cuota de ${props.mes.nombre} (hoy ${pesos(props.mes.montoCentavos)}):`);
-        if (texto === null) return;
-        const m = leerMonto(texto);
-        if (!m.ok) return props.alFallar(m.error);
-        api.cambiarMontoMes(props.mes.id, m.centavos)
-          .then(() => props.alListo(`Cuota de ${props.mes.nombre}: ${pesos(m.centavos)}.`))
-          .catch((e: unknown) => props.alFallar(mensajeDe(e)));
-      }}>
-      Corregir el monto
-    </button>
+    <div className="capa" role="dialog" aria-modal="true" aria-labelledby="titulo-editar-mes" onClick={(e) => e.target === e.currentTarget && props.alCerrar()}>
+      <form className="tarjeta ventana" onSubmit={guardar}>
+        <h2 id="titulo-editar-mes">Editar {props.mes.nombre}</h2>
+        <label className="campo">Monto de la cuota<input inputMode="decimal" required value={monto} onChange={(e) => setMonto(e.target.value)} /></label>
+        <label className="campo">Nota (opcional)<input maxLength={200} value={nota} onChange={(e) => setNota(e.target.value)} /></label>
+        {props.mes.pagaron > 0 && <p className="ayuda">{props.mes.pagaron} ya pagaron: a ellos no les cambia. El monto nuevo vale para los que todavía deben.</p>}
+        {error && <p className="aviso error" role="alert">{error}</p>}
+        <button className="boton principal" type="submit" disabled={guardando}>{guardando ? "Guardando…" : "Guardar cambios"}</button>
+        <button className="boton secundario" type="button" onClick={props.alCerrar}>Cancelar</button>
+      </form>
+    </div>
   );
 }
 

@@ -12,6 +12,7 @@ import {
   fijarAlias,
   listarMeses,
 } from "../cuotas/cuotas.js";
+import { antesDeEliminarMes, editarMes, eliminarMes } from "../cuotas/eliminar.js";
 import type { BaseDeDatos } from "../db/cliente.js";
 import { actorDe, idSchema, montoSchema, motivoSchema, requiereSesion, textoOpcional } from "./comun.js";
 
@@ -36,6 +37,15 @@ export function rutasCuotas(api: FastifyInstance, db: BaseDeDatos) {
   api.put("/cuotas/meses/:id/monto", async (peticion) => {
     const { montoCentavos } = z.object({ montoCentavos: montoSchema }).parse(peticion.body);
     await cambiarMontoDelMes(db, actorDe(peticion), idSchema.parse(peticion.params).id, montoCentavos);
+    return { ok: true };
+  });
+
+  api.put("/cuotas/meses/:id", async (peticion) => editarMes(db, actorDe(peticion), idSchema.parse(peticion.params).id, (peticion.body ?? {}) as never));
+
+  api.get("/cuotas/meses/:id/eliminar", async (peticion) => antesDeEliminarMes(db, actorDe(peticion), idSchema.parse(peticion.params).id));
+
+  api.post("/cuotas/meses/:id/eliminar", async (peticion) => {
+    await eliminarMes(db, actorDe(peticion), idSchema.parse(peticion.params).id, (peticion.body ?? {}) as never);
     return { ok: true };
   });
 

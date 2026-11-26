@@ -403,6 +403,10 @@ export const api = {
   mesesCuota: () => pedir<{ meses: MesCuota[]; alias: string | null }>("GET", "/cuotas/meses"),
   abrirMes: (datos: { anio: number; mes: number; montoCentavos: string; nota?: string }) =>
     pedir<{ cuotasCargadas: number }>("POST", "/cuotas/meses", datos),
+  editarMes: (id: string, datos: { montoCentavos: string; nota?: string }) => pedir<{ cuotasCambiadas: number }>("PUT", `/cuotas/meses/${id}`, datos),
+  antesDeEliminarMes: (id: string) => pedir<{ nombre: string; cuotas: number; pagaron: number; cobradoCentavos: string }>("GET", `/cuotas/meses/${id}/eliminar`),
+  eliminarMes: (id: string, plata?: { destino: "DEVUELTA" } | { destino: "QUEDA"; concepto: string }) =>
+    pedir<{ ok: true }>("POST", `/cuotas/meses/${id}/eliminar`, plata ? { plata } : {}),
   cambiarMontoMes: (id: string, montoCentavos: string) => pedir<unknown>("PUT", `/cuotas/meses/${id}/monto`, { montoCentavos }),
   deudores: (periodoId?: string) =>
     pedir<{ deudores: Deudor[]; totalCentavos: string; alias: string | null }>("GET", `/cuotas/deudores${periodoId ? `?periodoId=${periodoId}` : ""}`),
