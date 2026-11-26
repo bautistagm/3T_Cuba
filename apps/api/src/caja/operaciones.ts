@@ -5,7 +5,7 @@
 import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import { registrarAuditoria } from "../auditoria/auditoria.js";
 import type { BaseDeDatos, Ejecutor } from "../db/cliente.js";
-import { admins, asientosCaja, cocinas, controlesCaja, cuentasCaja, movimientosCaja, sabados, traspasosEfectivo } from "../db/esquema.js";
+import { admins, asientosCaja, cocinas, controlesCaja, cuentasCaja, fiestas, movimientosCaja, sabados, traspasosEfectivo } from "../db/esquema.js";
 import { ErrorNegocio, noExiste, soloDueno } from "../errores.js";
 import { registrarGasto, type ItemGasto } from "../gastos/gastos.js";
 import { codigoEfectivo } from "./cuentas.js";
@@ -36,6 +36,8 @@ export async function saldosCaja(db: Ejecutor) {
   let total = 0n;
   const efectivo: { adminId: string; nombre: string; centavos: bigint }[] = [];
   const camadas: { cocinaId: string; camada: string; fecha: string; centavos: bigint }[] = [];
+  const nombresFiestas = new Map((await db.select({ id: fiestas.id, nombre: fiestas.nombre }).from(fiestas)).map((f) => [`PUERTA:${f.id}`, f]));
+  const puertas: { fiestaId: string; fiesta: string; centavos: bigint }[] = [];
   for (const f of filas) {
     const saldo = BigInt(f.saldo);
     total += saldo;
@@ -45,10 +47,13 @@ export async function saldosCaja(db: Ejecutor) {
     } else if (f.codigo.startsWith("COCINA:") && saldo !== 0n) {
       const c = datosCocina.get(f.codigo);
       if (c) camadas.push({ cocinaId: c.id, camada: c.camada, fecha: c.fecha, centavos: saldo });
+    } else if (f.codigo.startsWith("PUERTA:") && saldo !== 0n) {
+      const fi = nombresFiestas.get(f.codigo);
+      puertas.push({ fiestaId: f.codigo.slice(7), fiesta: fi?.nombre ?? "Fiesta", centavos: saldo });
     }
   }
   efectivo.sort((a, b) => (a.centavos > b.centavos ? -1 : 1));
-  return { totalCentavos: total, cuentaCentavos: cuenta, efectivo, camadas };
+  return { totalCentavos: total, cuentaCentavos: cuenta, efectivo, camadas, puertas };
 }
 
 /** El efectivo que tiene a cargo un admin. */

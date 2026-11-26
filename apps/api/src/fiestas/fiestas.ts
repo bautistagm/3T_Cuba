@@ -8,6 +8,7 @@
  * - Cada entrada tiene un código aleatorio (el QR). Se marca usada en la puerta (etapa 9.3).
  */
 import { randomBytes } from "node:crypto";
+import { cobrosDePuerta } from "./cobrosPuerta.js";
 import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { normalizarDni } from "@3t/shared";
 import { z } from "zod";
@@ -139,6 +140,7 @@ export async function detalleFiesta(db: BaseDeDatos, fiestaId: string, actor: Ac
       // El link de puerta lo ve solo el dueño (es quien lo comparte).
       tokenPuerta: actor.rol === "DUENO" ? fiesta.tokenPuerta : null,
     },
+    puerta: await cobrosDePuerta(db, fiestaId),
     tipos: tipos.map((t) => {
       const suyas = todasLasTandas.filter((x) => x.tipoId === t.id);
       return {

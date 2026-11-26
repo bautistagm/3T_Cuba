@@ -13,7 +13,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { registrarAuditoria, type Actor } from "../auditoria/auditoria.js";
 import type { BaseDeDatos } from "../db/cliente.js";
-import { entradas, fiestas, tiposEntrada } from "../db/esquema.js";
+import { entradas, fiestas, tiposEntrada, ventasPuerta } from "../db/esquema.js";
 import { ErrorNegocio } from "../errores.js";
 
 /** Huella del código del QR (la misma cuenta la hace el celular para buscar en su lista sin señal). */
@@ -30,7 +30,10 @@ export async function listaDePuerta(db: BaseDeDatos, tokenPuerta: string) {
   const fiesta = await fiestaDePuerta(db, tokenPuerta);
   const tipos = await db.select().from(tiposEntrada).where(eq(tiposEntrada.fiestaId, fiesta.id)).orderBy(asc(tiposEntrada.orden));
   const lista = await db.select().from(entradas).where(eq(entradas.fiestaId, fiesta.id)).orderBy(asc(entradas.nombre));
+  const cobros = await db.select().from(ventasPuerta).where(eq(ventasPuerta.fiestaId, fiesta.id));
   return {
+    /** Cobros en efectivo hechos en la puerta (para ver cuánto tiene cada uno y contar gente). */
+    cobrosPuerta: cobros.map((v) => ({ id: v.id, tipoId: v.tipoId, cantidad: v.cantidad, montoCentavos: v.montoCentavos.toString(), por: v.cobradoPor, entregado: v.estado === "RENDIDA" })),
     fiesta: { nombre: fiesta.nombre, fechaHora: fiesta.fechaHora.toISOString(), lugar: fiesta.lugar },
     tipos: tipos.map((t) => ({ id: t.id, nombre: t.nombre })),
     entradas: lista

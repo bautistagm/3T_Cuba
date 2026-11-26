@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { antesDeEliminarFiesta, eliminarFiesta, eliminarFiestaSchema } from "../fiestas/eliminar.js";
+import { eliminarVentaPuerta, recibirPlataDePuerta, registrarVentasPuerta } from "../fiestas/cobrosPuerta.js";
 import { ingresosSchema, listaDePuerta, registrarIngresos } from "../fiestas/puerta.js";
 import { z } from "zod";
 import type { BaseDeDatos } from "../db/cliente.js";
@@ -149,6 +150,22 @@ export function rutasFiestas(
   api.get("/publico/puerta/:token", { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } }, async (peticion) => {
     const { token } = z.object({ token: z.string().min(10).max(100) }).parse(peticion.params);
     return listaDePuerta(db, token);
+  });
+
+  api.post("/publico/puerta/:token/ventas", { config: { rateLimit: { max: 120, timeWindow: "1 minute" } } }, async (peticion) => {
+    const { token } = z.object({ token: z.string().min(10).max(100) }).parse(peticion.params);
+    return registrarVentasPuerta(db, { tipo: "PUBLICO", ip: peticion.ip }, token, (peticion.body ?? {}) as never);
+  });
+
+  api.post("/fiestas/:id/puerta/recibir", async (peticion) => {
+    const { nombre } = z.object({ nombre: z.string().trim().min(1).max(40) }).parse(peticion.body);
+    const r = await recibirPlataDePuerta(db, actorDe(peticion), idSchema.parse(peticion.params).id, nombre);
+    return { centavos: r.centavos };
+  });
+
+  api.post("/ventas-puerta/:id/eliminar", async (peticion) => {
+    await eliminarVentaPuerta(db, actorDe(peticion), idSchema.parse(peticion.params).id);
+    return { ok: true };
   });
 
   api.post("/publico/puerta/:token/ingresos", { config: { rateLimit: { max: 300, timeWindow: "1 minute" } } }, async (peticion) => {
