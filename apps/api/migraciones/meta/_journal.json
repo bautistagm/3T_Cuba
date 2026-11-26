@@ -183,6 +183,13 @@
       "when": 1795621713758,
       "tag": "0025_eliminar_sabado",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1795700108486,
+      "tag": "0026_eliminar_mes",
+      "breakpoints": true
     }
   ]
 }
