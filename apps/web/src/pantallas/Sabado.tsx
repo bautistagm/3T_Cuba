@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { BotonEliminar } from "../componentes/EliminarFiesta";
+import { BotonEditar, BotonEliminar, EliminarConPlata, OPCIONES_COBRADO, plataDe } from "../componentes/EliminarFiesta";
+import { EditarRapido } from "../componentes/EditarRapido";
 import { EliminarSabado } from "../componentes/EliminarSabado";
 import { api, type Cobro, type DetalleSabado, type FilaSabado, type Medio } from "../api";
-import { Cargando, Encabezado, mensajeDe, pedirMotivo, SelectorMedio, useAviso } from "../componentes/comunes";
-import { fechaLarga, hora, leerMonto, pesos } from "../plata";
+import { Cargando, Encabezado, mensajeDe, SelectorMedio, useAviso } from "../componentes/comunes";
+import { fechaLarga, hora, leerMonto, montoParaEditar, pesos } from "../plata";
 import { useAdmin } from "../sesion";
 
 export function PantallaSabado() {
@@ -16,6 +17,8 @@ export function PantallaSabado() {
   const [cobrando, setCobrando] = useState(false);
   const [verOtros, setVerOtros] = useState(false);
   const [eliminando, setEliminando] = useState<string | null>(null);
+  const [editandoCobro, setEditandoCobro] = useState<Cobro | null>(null);
+  const [eliminandoCobro, setEliminandoCobro] = useState<Cobro | null>(null);
   const { setAviso, Aviso } = useAviso();
 
   const cargar = useCallback(async () => {
@@ -54,24 +57,53 @@ export function PantallaSabado() {
     }
   }
 
-  async function anular(cobro: Cobro) {
-    const motivo = pedirMotivo("este cobro");
-    if (!motivo) return;
-    try {
-      await api.anularPago(cobro.id, motivo);
-      setAviso({ tipo: "ok", texto: "Cobro anulado." });
-      await cargar();
-    } catch (e) {
-      setAviso({ tipo: "error", texto: mensajeDe(e) });
-    }
-  }
-
   return (
     <>
       <Encabezado volverA="/" volverTexto="3T" titulo={`Sábado ${fechaLarga(sabado.fecha).replace(/^sábado,?\s*/i, "")}`} />
       <main className="contenido">
         <Aviso />
 
+        {editandoCobro && (
+          <EditarRapido
+            titulo="Editar cobro"
+            campos={[
+              { clave: "monto", etiqueta: "Monto", tipo: "monto", valor: montoParaEditar(editandoCobro.montoCentavos) },
+              { clave: "medio", etiqueta: "Cómo pagó", tipo: "opciones", valor: editandoCobro.medio, opciones: [{ valor: "EFECTIVO", texto: "Efectivo" }, { valor: "TRANSFERENCIA", texto: "Transferencia" }] },
+              { clave: "nombre", etiqueta: "Nombre (opcional)", tipo: "texto", valor: editandoCobro.nombrePagador ?? "" },
+              { clave: "camada", etiqueta: "Camada (opcional)", tipo: "texto", valor: editandoCobro.camadaPagador ?? "" },
+              { clave: "nota", etiqueta: "Nota (opcional)", tipo: "texto", valor: editandoCobro.nota ?? "", max: 300 },
+            ]}
+            alCerrar={() => setEditandoCobro(null)}
+            alGuardar={async (v) => {
+              await api.editarCobro(editandoCobro.id, {
+                montoCentavos: v.monto ?? "0",
+                medio: v.medio === "TRANSFERENCIA" ? "TRANSFERENCIA" : "EFECTIVO",
+                ...(v.nombre ? { nombre: v.nombre } : {}),
+                ...(v.camada ? { camada: v.camada } : {}),
+                ...(v.nota ? { nota: v.nota } : {}),
+              });
+              setEditandoCobro(null);
+              setAviso({ tipo: "ok", texto: "Cobro editado." });
+              await cargar();
+            }}
+          />
+        )}
+        {eliminandoCobro && (
+          <EliminarConPlata
+            titulo="Eliminar cobro"
+            montoCentavos={eliminandoCobro.estado === "ANULADO" ? null : eliminandoCobro.montoCentavos}
+            sinPlata="Este cobro ya estaba anulado: se borra y la caja no cambia."
+            opciones={OPCIONES_COBRADO}
+            boton="Eliminar cobro"
+            alCerrar={() => setEliminandoCobro(null)}
+            alConfirmar={async (opcion, nombre) => {
+              await api.eliminarCobro(eliminandoCobro.id, plataDe(opcion, nombre));
+              setEliminandoCobro(null);
+              setAviso({ tipo: "ok", texto: "Cobro eliminado." });
+              await cargar();
+            }}
+          />
+        )}
         {eliminando && (
           <EliminarSabado sabadoId={eliminando} alCerrar={() => setEliminando(null)}
             alEliminar={() => {
@@ -130,8 +162,11 @@ export function PantallaSabado() {
                   </span>
                   <span className="lado">
                     <strong>{pesos(c.montoCentavos)}</strong>
-                    {yo.rol === "DUENO" && c.estado === "CONFIRMADO" && (
-                      <button type="button" className="enlace" onClick={() => void anular(c)}>Anular</button>
+                    {yo.rol === "DUENO" && (
+                      <span className="iconos">
+                        {c.estado === "CONFIRMADO" && <BotonEditar etiqueta="Editar cobro" alTocar={() => setEditandoCobro(c)} />}
+                        <BotonEliminar etiqueta="Eliminar cobro" alTocar={() => setEliminandoCobro(c)} />
+                      </span>
                     )}
                   </span>
                 </li>

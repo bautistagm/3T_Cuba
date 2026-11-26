@@ -31,6 +31,7 @@ import { rutasTickets } from "./rutas/tickets.js";
 import { rutasCaja } from "./rutas/caja.js";
 import { rutasMercadoPago } from "./rutas/mercadopago.js";
 import { rutasJugadores } from "./rutas/jugadores.js";
+import { rutasEdicion } from "./rutas/edicion.js";
 import { rutasCuotas } from "./rutas/cuotas.js";
 import { rutasTransferencias } from "./rutas/transferencias.js";
 import { rutasFiestas } from "./rutas/fiestas.js";
@@ -323,6 +324,7 @@ export async function construirApp(opciones: {
       rutasCaja(api, db, lectorTickets, asistente);
       rutasJugadores(api, db);
       rutasCuotas(api, db);
+      rutasEdicion(api, db);
       rutasFiestas(api, db, verificacion.buscarEntradas, despacharEmails, async () => (enviador ? enviador.disponible() : false));
 
       // --- Gmail: conectar la casilla y estado ---

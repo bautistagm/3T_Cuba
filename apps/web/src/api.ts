@@ -252,6 +252,8 @@ export interface VistaImportacion {
   resumen: { nuevos: number; yaEstan: number; conError: number };
 }
 
+export type PlataElegida = { destino: "DEVUELTA" } | { destino: "QUEDA"; concepto: string };
+
 export interface MesCuota {
   id: string;
   anio: number;
@@ -336,6 +338,7 @@ export interface DetalleFiesta {
     dni: string;
     estado: "PENDIENTE_PAGO" | "VALIDA" | "USADA" | "ANULADA";
     pagadaEn: string | null;
+    compraTotalCentavos: string;
     usadaEn: string | null;
     usadaPor: string | null;
     email: string;
@@ -469,6 +472,16 @@ export const api = {
   fijarPrecioInvitado: (montoCentavos: string) => pedir<unknown>("PUT", "/parametros/precio-invitado", { montoCentavos }),
   cobrarInvitado: (sabadoId: string, datos: { medio: Medio; nombre?: string; camada?: string; nota?: string }) =>
     pedir<{ pago: Cobro }>("POST", `/sabados/${sabadoId}/invitados`, datos),
+  eliminarCobro: (id: string, plata?: PlataElegida) => pedir<{ ok: true }>("POST", `/pagos/${id}/eliminar`, plata ? { plata } : {}),
+  editarCobro: (id: string, datos: { montoCentavos: string; medio: Medio; nombre?: string; camada?: string; nota?: string }) => pedir<{ id: string }>("PUT", `/pagos/${id}`, datos),
+  editarCocina: (id: string, datos: { camada: string; responsableNombre: string; responsableTelefono?: string }) => pedir<{ ok: true }>("PUT", `/cocinas/${id}/datos`, datos),
+  eliminarMovimientoCocina: (id: string) => pedir<{ ok: true }>("POST", `/movimientos-cocina/${id}/eliminar`),
+  editarMovimientoCocina: (id: string, montoCentavos: string) => pedir<{ ok: true }>("PUT", `/movimientos-cocina/${id}`, { montoCentavos }),
+  eliminarCuota: (id: string, plata?: PlataElegida) => pedir<{ ok: true }>("POST", `/cuotas/${id}/eliminar`, plata ? { plata } : {}),
+  editarCuota: (id: string, montoCentavos: string) => pedir<{ ok: true }>("PUT", `/cuotas/${id}`, { montoCentavos }),
+  eliminarCompra: (id: string, plata?: PlataElegida) => pedir<{ ok: true }>("POST", `/compras-entradas/${id}/eliminar`, plata ? { plata } : {}),
+  editarEntrada: (id: string, datos: { nombre: string; dni: string }) => pedir<{ ok: true }>("PUT", `/entradas/${id}`, datos),
+  editarTanda: (id: string, datos: { precioCentavos: string; hasta: string }) => pedir<{ ok: true }>("PUT", `/tandas/${id}`, datos),
   anularPago: (id: string, motivo: string) => pedir<unknown>("POST", `/pagos/${id}/anular`, { motivo }),
 
   crearCocina: (sabadoId: string, datos: { camada: string; responsableNombre: string; responsableTelefono?: string }) =>

@@ -118,7 +118,7 @@ export async function detalleFiesta(db: BaseDeDatos, fiestaId: string, actor: Ac
     : [];
   const ahora = new Date();
   const lista = await db
-    .select({ e: entradas, email: comprasEntradas.email, telefono: comprasEntradas.telefono, pagadaEn: pagos.fecha })
+    .select({ e: entradas, email: comprasEntradas.email, telefono: comprasEntradas.telefono, compraTotal: comprasEntradas.totalCentavos, pagadaEn: pagos.fecha })
     .from(entradas)
     .innerJoin(comprasEntradas, eq(comprasEntradas.id, entradas.compraId))
     .leftJoin(pagos, and(eq(pagos.id, comprasEntradas.pagoId), eq(pagos.estado, "CONFIRMADO")))
@@ -150,8 +150,9 @@ export async function detalleFiesta(db: BaseDeDatos, fiestaId: string, actor: Ac
         tandas: suyas.map((x) => ({ id: x.id, precioCentavos: x.precioCentavos, hasta: x.hasta.toISOString(), termino: x.hasta <= ahora })),
       };
     }),
-    entradas: lista.map(({ e, email, telefono, pagadaEn }) => ({
+    entradas: lista.map(({ e, email, telefono, compraTotal, pagadaEn }) => ({
       pagadaEn: pagadaEn?.toISOString() ?? null,
+      compraTotalCentavos: compraTotal,
       id: e.id,
       compraId: e.compraId,
       tipoId: e.tipoId,

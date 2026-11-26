@@ -6,14 +6,15 @@
  * - "QUEDA": queda en la caja como Otro ingreso, con el nombre que pone el dueño.
  * Si un pago cancelaba ese mes y otros, los otros meses siguen pagados (se vuelve a registrar el pago por esa parte).
  */
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { registrarAuditoria } from "../auditoria/auditoria.js";
-import { anularAsiento, registrarAsiento, type ActorAdmin } from "../caja/libro.js";
+import type { ActorAdmin } from "../caja/libro.js";
 import type { BaseDeDatos, Transaccion } from "../db/cliente.js";
-import { cargos, cuentasCaja, movimientosCaja, pagos, periodosCuota, transferenciasRecibidas } from "../db/esquema.js";
+import { cargos, periodosCuota } from "../db/esquema.js";
 import { ErrorNegocio, noExiste, soloDueno } from "../errores.js";
-import { nombreDelMes, registrarPagoDeCuotas } from "./cuotas.js";
+import { quitarCuotasDeSusPagos } from "../edicion/sueltos.js";
+import { nombreDelMes } from "./cuotas.js";
 
 export const eliminarMesSchema = z.object({
   plata: z
@@ -42,18 +43,6 @@ export async function antesDeEliminarMes(db: BaseDeDatos, actor: ActorAdmin, per
   };
 }
 
-/** La cuenta donde entró un pago (la del plantel o el efectivo de un admin). */
-async function cuentaDelPago(tx: Transaccion, asientoId: string) {
-  const [fila] = await tx
-    .select({ codigo: cuentasCaja.codigo })
-    .from(movimientosCaja)
-    .innerJoin(cuentasCaja, eq(cuentasCaja.id, movimientosCaja.cuentaId))
-    .where(and(eq(movimientosCaja.asientoId, asientoId), sql`${movimientosCaja.montoCentavos} > 0`))
-    .limit(1);
-  if (!fila) throw new Error("No se encontró la cuenta del pago");
-  return fila.codigo;
-}
-
 export async function eliminarMes(db: BaseDeDatos, actor: ActorAdmin, periodoId: string, pedido: z.input<typeof eliminarMesSchema>) {
   if (actor.rol !== "DUENO") throw soloDueno("eliminar un mes");
   const datos = eliminarMesSchema.parse(pedido);
@@ -65,77 +54,10 @@ export async function eliminarMes(db: BaseDeDatos, actor: ActorAdmin, periodoId:
       throw new ErrorNegocio(409, "MES_CON_PAGOS", "Ya hay jugadores que pagaron este mes: elegí si devolviste la plata o si queda en la caja.");
     }
     const nombre = nombreDelMes(periodo.anio, periodo.mes);
-    const pagoIds = [...new Set(delMes.map((c) => c.pagoId as string))];
-
-    for (const pagoId of pagoIds) {
-      const [pago] = await tx.select().from(pagos).where(eq(pagos.id, pagoId)).for("update");
-      if (!pago || pago.estado !== "CONFIRMADO") continue;
-      const cuenta = await cuentaDelPago(tx, pago.asientoId);
-      const suyas = await tx
-        .select({ cargo: cargos, anio: periodosCuota.anio, mes: periodosCuota.mes })
-        .from(cargos)
-        .innerJoin(periodosCuota, eq(periodosCuota.id, cargos.periodoId))
-        .where(eq(cargos.pagoId, pagoId))
-        .orderBy(asc(periodosCuota.anio), asc(periodosCuota.mes));
-      const deEsteMes = suyas.filter((s) => s.cargo.periodoId === periodoId).reduce((s, x) => s + x.cargo.montoCentavos, 0n);
-      const otras = suyas.filter((s) => s.cargo.periodoId !== periodoId);
-
-      // 1) Se anula el pago y sus cuotas vuelven a pendientes.
-      const motivo = `Se eliminó el mes ${nombre}`;
-      const anulacionAsientoId = await anularAsiento(tx, actor, { asientoId: pago.asientoId, motivo });
-      await tx.update(cargos).set({ estado: "PENDIENTE", pagoId: null }).where(eq(cargos.pagoId, pagoId));
-      await tx.update(pagos).set({ estado: "ANULADO", anuladoEn: new Date(), anuladoPorAdminId: actor.adminId, motivoAnulacion: motivo, anulacionAsientoId }).where(eq(pagos.id, pagoId));
-
-      // 2) Los otros meses que pagaba siguen pagados.
-      let nuevoCuotas: string | null = null;
-      if (otras.length > 0 && pago.jugadorId) {
-        const nuevo = await registrarPagoDeCuotas(tx, actor, {
-          jugadorId: pago.jugadorId,
-          cuotas: otras.map((o) => ({ ...o.cargo, estado: "PENDIENTE" as const, pagoId: null, anio: o.anio, mes: o.mes })),
-          medio: pago.medio === "EFECTIVO" ? "EFECTIVO" : "TRANSFERENCIA",
-          fecha: pago.fecha,
-          ...(pago.recibidoPorAdminId ? { recibidoPorAdminId: pago.recibidoPorAdminId } : {}),
-          ...(pago.nota ? { nota: pago.nota } : {}),
-        });
-        nuevoCuotas = nuevo.id;
-      }
-
-      // 3) La parte de este mes: se devolvió, o queda como otro ingreso.
-      let nuevoOtro: string | null = null;
-      if (datos.plata?.destino === "QUEDA" && deEsteMes > 0n) {
-        const concepto = datos.plata.concepto;
-        const asientoId = await registrarAsiento(tx, actor, {
-          fecha: pago.fecha,
-          descripcion: `Otro ingreso: ${concepto}`.slice(0, 200),
-          origen: "PAGO",
-          lineas: [
-            { cuentaCodigo: cuenta, montoCentavos: deEsteMes },
-            { cuentaCodigo: "INGRESO:OTROS", montoCentavos: -deEsteMes },
-          ],
-        });
-        const [otro] = await tx
-          .insert(pagos)
-          .values({ origen: "OTRO", montoCentavos: deEsteMes, medio: pago.medio, fecha: pago.fecha, nota: concepto.slice(0, 300), recibidoPorAdminId: pago.recibidoPorAdminId, registradoPorAdminId: actor.adminId, asientoId })
-          .returning();
-        nuevoOtro = otro?.id ?? null;
-      }
-
-      // 4) La transferencia que había confirmado ese pago apunta a lo que quedó.
-      const ahora = new Date();
-      if (nuevoCuotas) {
-        await tx.update(transferenciasRecibidas).set({ pagoId: nuevoCuotas }).where(eq(transferenciasRecibidas.pagoId, pagoId));
-      } else if (nuevoOtro) {
-        await tx
-          .update(transferenciasRecibidas)
-          .set({ estado: "RESUELTA", resolucion: "OTRO_INGRESO", pagoId: nuevoOtro, resueltoPorAdminId: actor.adminId, resueltoEn: ahora })
-          .where(eq(transferenciasRecibidas.pagoId, pagoId));
-      } else {
-        await tx
-          .update(transferenciasRecibidas)
-          .set({ estado: "RESUELTA", resolucion: "DEVUELTA", pagoId: null, nota: `Devuelta al eliminar el mes ${nombre}`, resueltoPorAdminId: actor.adminId, resueltoEn: ahora })
-          .where(eq(transferenciasRecibidas.pagoId, pagoId));
-      }
-    }
+    const todas = await tx.select({ id: cargos.id }).from(cargos).where(eq(cargos.periodoId, periodoId));
+    const pagosTocados = new Set(delMes.map((c) => c.pagoId));
+    await quitarCuotasDeSusPagos(tx, actor, todas.map((c) => c.id), datos.plata, `Se eliminó el mes ${nombre}`);
+    const pagoIds = [...pagosTocados];
 
     // 5) Se borran las cuotas y el mes.
     const [cantidad] = await tx.select({ n: sql<number>`count(*)::int` }).from(cargos).where(eq(cargos.periodoId, periodoId));
