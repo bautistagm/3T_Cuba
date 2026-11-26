@@ -48,7 +48,7 @@ BEGIN
     RETURN OLD;
   END IF;
   -- Al eliminar una compra se borran también sus entradas.
-  IF TG_TABLE_NAME = 'entradas' AND 'compras_entradas:' || OLD.compra_id::text = current_setting('app.eliminando', true) THEN
+  IF TG_TABLE_NAME = 'entradas' AND 'compras_entradas:' || (to_jsonb(OLD)->>'compra_id') = current_setting('app.eliminando', true) THEN
     RETURN OLD;
   END IF;
   IF TG_TABLE_NAME = 'fiestas' THEN
