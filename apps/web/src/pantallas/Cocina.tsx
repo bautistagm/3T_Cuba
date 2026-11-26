@@ -3,9 +3,9 @@ import { useLocation, useParams } from "react-router";
 import { api, type FormaCierre, type Gasto, type Medio, type MovimientoCocina, type ResumenCocina, type Ticket } from "../api";
 import { Cargando, Encabezado, mensajeDe, pedirMotivo, SelectorMedio, useAviso } from "../componentes/comunes";
 import { EditorItems, NOMBRES_CATEGORIA } from "../componentes/EditorItems";
-import { BotonEliminar, EliminarConPlata } from "../componentes/EliminarFiesta";
+import { BotonEditar, BotonEliminar, EliminarConPlata } from "../componentes/EliminarFiesta";
 import { prepararFoto } from "../fotos";
-import { hora, leerMonto, pesos } from "../plata";
+import { hora, leerMonto, montoParaEditar, pesos } from "../plata";
 import { useAdmin } from "../sesion";
 
 const NOMBRE_MOVIMIENTO: Record<MovimientoCocina["tipo"], string> = {
@@ -27,6 +27,7 @@ export function PantallaCocina() {
   const [panel, setPanel] = useState<"plata" | "gasto" | "cerrar" | null>(null);
   const [revisando, setRevisando] = useState<Ticket | null>(null);
   const [eliminando, setEliminando] = useState<Gasto | null>(null);
+  const [editandoGasto, setEditandoGasto] = useState<Gasto | null>(null);
   const { setAviso, Aviso } = useAviso();
 
   const cargar = useCallback(async () => {
@@ -161,6 +162,7 @@ export function PantallaCocina() {
                   <span>{g.origenCarga === "IA" ? "Leído por IA" : "Cargado a mano"}{g.estado === "ANULADO" ? ` · ANULADO: ${g.motivoAnulacion ?? ""}` : ""}</span>
                 </span>
                 <strong>{pesos(g.totalCentavos)}</strong>
+                {esDueno && abierta && g.estado === "CONFIRMADO" && <BotonEditar etiqueta={`Editar el gasto ${g.proveedor ?? g.descripcion}`} alTocar={() => setEditandoGasto(g)} />}
                 {esDueno && (
                   <BotonEliminar etiqueta={`Eliminar el gasto ${g.proveedor ?? g.descripcion}`} alTocar={() => {
                     if (!abierta) {
@@ -186,6 +188,24 @@ export function PantallaCocina() {
           ))}
         </section>
 
+        {editandoGasto && (
+          <div className="capa" role="dialog" aria-modal="true" aria-label="Editar gasto">
+            <div className="tarjeta ventana">
+              <h2>Editar gasto</h2>
+              <EditorItems
+                proveedorInicial={editandoGasto.proveedor ?? ""}
+                iniciales={editandoGasto.items.map((i) => ({ descripcion: i.descripcion, cantidad: i.cantidad ?? "", categoria: i.categoria, importe: montoParaEditar(i.subtotalCentavos) }))}
+                textoBoton="Guardar cambios"
+                alCancelar={() => setEditandoGasto(null)}
+                alGuardar={async (datos) => {
+                  await api.editarGasto(editandoGasto.id, { ...(datos.proveedor ? { proveedor: datos.proveedor } : {}), items: datos.items });
+                  setEditandoGasto(null);
+                  await listo("Gasto editado.");
+                }}
+              />
+            </div>
+          </div>
+        )}
         {eliminando && (
           <EliminarConPlata
             titulo={`Eliminar el gasto «${eliminando.proveedor ?? eliminando.descripcion}»`}

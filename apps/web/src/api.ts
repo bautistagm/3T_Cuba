@@ -428,6 +428,10 @@ export const api = {
     pedir<{ fiesta: { id: string } }>("POST", "/fiestas", datos),
   fiesta: (id: string) => pedir<DetalleFiesta>("GET", `/fiestas/${id}`),
   ventaFiesta: (id: string, abierta: boolean) => pedir<unknown>("POST", `/fiestas/${id}/venta`, { abierta }),
+  editarFiesta: (id: string, datos: { nombre: string; fechaHora: string; lugar?: string; tipos: { id?: string; nombre: string; precioCentavos: string }[] }) =>
+    pedir<{ ok: true }>("PUT", `/fiestas/${id}`, datos),
+  editarGasto: (id: string, datos: { proveedor?: string; items: { descripcion: string; cantidad?: string; categoria: Categoria; subtotalCentavos: string }[] }) =>
+    pedir<{ id: string }>("PUT", `/gastos/${id}`, datos),
   antesDeEliminarFiesta: (id: string) => pedir<{ nombre: string; entradas: number; pagos: number; totalCentavos: string }>("GET", `/fiestas/${id}/eliminar`),
   eliminarFiesta: (id: string, plata?: { destino: "DEVUELTA" } | { destino: "QUEDA"; concepto: string }) =>
     pedir<{ ok: true }>("POST", `/fiestas/${id}/eliminar`, plata ? { plata } : {}),

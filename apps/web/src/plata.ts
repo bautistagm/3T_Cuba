@@ -18,3 +18,10 @@ export const fechaLarga = (aaaammdd: string) => formatoFecha.format(new Date(`${
 
 const formatoHora = new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "America/Argentina/Buenos_Aires" });
 export const hora = (iso: string) => formatoHora.format(new Date(iso));
+
+/** Un monto en centavos como texto para editar en un campo (ej: "15000" o "15000,50"). */
+export const montoParaEditar = (centavos: string | bigint): string => {
+  const c = BigInt(centavos);
+  const resto = c % 100n;
+  return `${c / 100n}${resto === 0n ? "" : `,${resto.toString().padStart(2, "0")}`}`;
+};

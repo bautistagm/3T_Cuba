@@ -191,6 +191,59 @@ export async function eliminarGasto(db: BaseDeDatos, actor: ActorAdmin, gastoId:
   });
 }
 
+export const editarGastoSchema = z.object({
+  proveedor: z.string().trim().max(120).optional(),
+  fecha: z.coerce.date().optional(),
+  items: z
+    .array(
+      z.object({
+        descripcion: z.string().trim().min(1).max(200),
+        cantidad: z.string().trim().max(40).optional(),
+        categoria: z.enum(CATEGORIAS),
+        subtotalCentavos: z.coerce.bigint().positive("Cada producto tiene que tener un monto mayor a cero."),
+      }),
+    )
+    .min(1)
+    .max(100),
+});
+
+/**
+ * Editar un gasto (solo el dueño, 26/11/2026). Por dentro: se anula el asiento viejo y se carga el gasto nuevo
+ * (misma cuenta, misma cocina, mismo ticket), así la caja queda con la plata correcta y la historia guardada.
+ * Un gasto de una cocina ya cerrada no se edita.
+ */
+export async function editarGasto(db: BaseDeDatos, actor: ActorAdmin, gastoId: string, pedido: z.input<typeof editarGastoSchema>) {
+  if (actor.rol !== "DUENO") throw soloDueno("editar un gasto");
+  const datos = editarGastoSchema.parse(pedido);
+  return db.transaction(async (tx) => {
+    const [gasto] = await tx.select().from(gastos).where(eq(gastos.id, gastoId)).for("update");
+    if (!gasto) throw noExiste("El gasto");
+    if (gasto.estado === "ANULADO") throw new ErrorNegocio(409, "GASTO_ANULADO", "Ese gasto está anulado: no se edita.");
+    if (gasto.cocinaId) {
+      const [cocina] = await tx.select().from(cocinas).where(eq(cocinas.id, gasto.cocinaId)).for("update");
+      if (cocina?.estado === "CERRADA") throw new ErrorNegocio(409, "COCINA_CERRADA", "La cocina de ese sábado ya se cerró y rindió: no se edita.");
+    }
+    const items = await tx.select().from(gastoItems).where(eq(gastoItems.gastoId, gastoId));
+    await anularAsiento(tx, actor, { asientoId: gasto.asientoId, motivo: "Gasto editado" });
+    const nuevo = await registrarGasto(tx, actor, {
+      fecha: datos.fecha ?? gasto.fecha,
+      proveedor: datos.proveedor,
+      cuentaOrigenCodigo: gasto.cuentaOrigenCodigo,
+      cocinaId: gasto.cocinaId ?? undefined,
+      sabadoId: gasto.sabadoId ?? undefined,
+      origenCarga: gasto.origenCarga,
+      items: datos.items,
+    });
+    await tx.update(tickets).set({ gastoId: nuevo.id }).where(eq(tickets.gastoId, gastoId));
+    await tx.execute(sql`select set_config('app.eliminando', ${`gasto:${gastoId}`}, true)`);
+    await tx.delete(gastoItems).where(eq(gastoItems.gastoId, gastoId));
+    await tx.delete(gastos).where(eq(gastos.id, gastoId));
+    await tx.execute(sql`select set_config('app.eliminando', '', true)`);
+    await registrarAuditoria(tx, actor, { accion: "GASTO_EDITADO", entidad: "gasto", entidadId: nuevo.id, antes: { gasto, items }, despues: { gastoId: nuevo.id, items: datos.items } });
+    return nuevo;
+  });
+}
+
 /** Gastos con su detalle. */
 export async function gastosConItems(db: Ejecutor, filtro: { cocinaId: string }) {
   const lista = await db.select().from(gastos).where(eq(gastos.cocinaId, filtro.cocinaId)).orderBy(asc(gastos.fecha));

@@ -7,7 +7,7 @@ import type { ConexionBase } from "../db/cliente.js";
 import { gastoItems, gastos } from "../db/esquema.js";
 import { prepararBaseLimpia } from "../pruebas/base.js";
 import { obtenerOCrearSabado } from "../sabados/sabados.js";
-import { anularGasto, eliminarGasto, type ItemGasto } from "./gastos.js";
+import { anularGasto, editarGasto, eliminarGasto, type ItemGasto } from "./gastos.js";
 
 let conexion: ConexionBase;
 let dueno: ActorAdmin;
@@ -81,5 +81,23 @@ describe("eliminar gasto", () => {
     const { gasto } = await cocinaConGasto();
     await expect(conexion.db.delete(gastos).where(eq(gastos.id, gasto.id))).rejects.toThrow();
     await expect(conexion.db.delete(gastoItems).where(eq(gastoItems.gastoId, gasto.id))).rejects.toThrow();
+  });
+});
+
+describe("editar gasto", () => {
+  it("cambia el detalle y la caja queda con el monto nuevo", async () => {
+    const { cocina, gasto } = await cocinaConGasto();
+    const antes = await saldoDeCuenta(conexion.db, codigoCuentaCocina(cocina.id));
+    await expect(editarGasto(conexion.db, admin, gasto.id, { items: [] })).rejects.toMatchObject({ codigo: "SOLO_DUENO" });
+    const nuevo = await editarGasto(conexion.db, dueno, gasto.id, { proveedor: "Carnicería Don José", items: [{ descripcion: "Vacío", categoria: "CARNE", subtotalCentavos: 10_000_000n }] });
+    expect(await existe(gasto.id)).toBe(false);
+    expect(nuevo).toMatchObject({ proveedor: "Carnicería Don José", totalCentavos: 10_000_000n, cocinaId: cocina.id });
+    expect(await saldoDeCuenta(conexion.db, codigoCuentaCocina(cocina.id))).toBe(antes + 5_000_000n);
+  });
+
+  it("no edita gastos de cocinas cerradas", async () => {
+    const { cocina, gasto } = await cocinaConGasto();
+    await cerrarCocina(conexion.db, dueno, { cocinaId: cocina.id, forma: "DEVOLUCION_TRANSFERENCIA" });
+    await expect(editarGasto(conexion.db, dueno, gasto.id, { items: [{ descripcion: "X", categoria: "OTROS", subtotalCentavos: 1n }] })).rejects.toMatchObject({ codigo: "COCINA_CERRADA" });
   });
 });
